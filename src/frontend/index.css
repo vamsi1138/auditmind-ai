@@ -1,77 +1,197 @@
-@import 'tailwindcss';
-@config "../../tailwind.config.js";
-
-@layer base {
-  :root {
-    --background: 0 0% 97.65%;
-    --foreground: 0 0% 12.55%;
-    --muted: 0 0% 93.73%;
-    --muted-foreground: 0 0% 39.22%;
-    --popover: 0 0% 98.82%;
-    --popover-foreground: 0 0% 12.55%;
-    --card: 0 0% 98.82%;
-    --card-foreground: 0 0% 12.55%;
-    --border: 0 0% 84.71%;
-    --input: 0 0% 94.12%;
-    --primary: 22.93 92.59% 52.35%;
-    --primary-foreground: 44 0% 100%;
-    --secondary: 34.05 100% 85.49%;
-    --secondary-foreground: 16.27 50.43% 22.94%;
-    --accent: 0 0% 90.98%;
-    --accent-foreground: 0 0% 12.55%;
-    --destructive: 10.16 77.87% 53.92%;
-    --destructive-foreground: 0 0% 100%;
-    --ring: 24.8 79.79% 63.14%;
-    --chart-1: 22.93 92.59% 52.35%;
-    --chart-2: 34.05 100% 85.49%;
-    --chart-3: 0 0% 90.98%;
-    --chart-4: 34.05 100% 88.49%;
-    --chart-5: 22.93 95.59% 52.35%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 0 0% 6.67%;
-    --foreground: 0 0% 93.33%;
-    --muted: 0 0% 13.33%;
-    --muted-foreground: 0 0% 70.59%;
-    --popover: 0 0% 9.8%;
-    --popover-foreground: 0 0% 93.33%;
-    --card: 0 0% 9.8%;
-    --card-foreground: 0 0% 93.33%;
-    --border: 44 14% 11%;
-    --input: 0 0% 28.24%;
-    --primary: 22.93 92.59% 52.35%;
-    --primary-foreground: 29.51 0% 100%;
-    --secondary: 28.5 64.52% 12.16%;
-    --secondary-foreground: 29.51 100% 88.04%;
-    --accent: 0 0% 16.47%;
-    --accent-foreground: 0 0% 93.33%;
-    --destructive: 10.16 77.87% 53.92%;
-    --destructive-foreground: 0 0% 100%;
-    --ring: 23.11 59.8% 40%;
-    --chart-1: 22.93 92.59% 52.35%;
-    --chart-2: 28.5 64.52% 12.16%;
-    --chart-3: 0 0% 16.47%;
-    --chart-4: 28.5 64.52% 15.16%;
-    --chart-5: 22.93 95.59% 52.35%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Force dark mode */
 :root {
   color-scheme: dark;
+  font-family: Inter, system-ui, sans-serif;
+  background: #0b1020;
+  color: #e8ecf3;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
-  @apply font-mono bg-background text-foreground;
+  margin: 0;
+  background: radial-gradient(circle at top, #16203d, #0b1020 55%);
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32px 16px;
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.hero {
+  margin-bottom: 20px;
+}
+
+.hero h1 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+}
+
+.hero p {
+  margin: 0;
+  color: #aeb8cc;
+  line-height: 1.6;
+}
+
+.card {
+  background: rgba(18, 24, 44, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.between {
+  justify-content: space-between;
+}
+
+.gap {
+  gap: 12px;
+}
+
+.wrap {
+  flex-wrap: wrap;
+}
+
+.editor {
+  width: 100%;
+  min-height: 280px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid #36405c;
+  background: #0d1428;
+  color: #eef3ff;
+  padding: 14px;
+  margin: 12px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  line-height: 1.5;
+}
+
+button {
+  background: #5b8cff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #25304b;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #1f315b;
+  font-weight: 700;
+}
+
+.score {
+  color: #d6e2ff;
+  font-weight: 600;
+}
+
+.tagWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #15223f;
+  border: 1px solid #29375a;
+  color: #d8e2f9;
+  font-size: 0.9rem;
+}
+
+.riskList {
+  display: grid;
+  gap: 12px;
+}
+
+.riskItem {
+  border: 1px solid #2a3656;
+  border-radius: 12px;
+  padding: 14px;
+  background: #0e1730;
+}
+
+.severity {
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.severity-high {
+  background: #5b1f2d;
+  color: #ffd7dd;
+}
+
+.severity-medium {
+  background: #5b4a1f;
+  color: #fff0c9;
+}
+
+.severity-low {
+  background: #1f4b5b;
+  color: #d7f4ff;
+}
+
+.severity-info {
+  background: #2b3556;
+  color: #dfe6ff;
+}
+
+.error {
+  color: #ff8c8c;
+  margin-top: 10px;
+}
+
+.muted {
+  color: #97a4bf;
+}
+
+.jsonBlock {
+  margin: 0;
+  white-space: pre-wrap;
+  background: #0d1428;
+  border: 1px solid #2a3656;
+  border-radius: 12px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
