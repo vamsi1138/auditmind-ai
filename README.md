@@ -1,149 +1,132 @@
-<<<<<<< HEAD
-# Project Starter
+# 🔐 AuditMind AI
 
-This is the starter template for ElizaOS projects.
+**ElizaOS-powered Smart Contract Security Copilot (Deployed on Nosana)**
 
-## Features
+---
 
-- Pre-configured project structure for ElizaOS development
-- Comprehensive testing setup with component and e2e tests
-- Default character configuration with plugin integration
-- Example service, action, and provider implementations
-- TypeScript configuration for optimal developer experience
-- Built-in documentation and examples
+## 🚀 Overview
 
-## Getting Started
+AuditMind AI is an intelligent **smart contract security assistant** designed to help developers identify vulnerabilities, analyze risks, and improve contract safety.
+
+Built using **ElizaOS**, it acts as an AI copilot that:
+
+* Reviews smart contract logic
+* Detects potential vulnerabilities
+* Suggests improvements
+* Explains security risks in simple terms
+
+---
+
+## 🎯 Problem
+
+Smart contract vulnerabilities can lead to **millions in losses**.
+
+Developers often:
+
+* Miss edge cases
+* Lack deep security knowledge
+* Don’t have access to audit tools
+
+---
+
+## 💡 Solution
+
+AuditMind AI provides:
+
+* ⚡ Instant contract analysis
+* 🛡️ Security-focused insights
+* 🧠 AI-powered explanations
+* 🔍 Vulnerability detection guidance
+
+---
+
+## 🧠 Features
+
+* Smart contract risk analysis
+* Vulnerability explanation (Reentrancy, Overflow, etc.)
+* Developer-friendly feedback
+* ElizaOS plugin-based architecture
+* Ready for deployment on Nosana
+
+---
+
+## 🏗️ Tech Stack
+
+* **ElizaOS** – AI agent framework
+* **TypeScript** – Core development
+* **Node.js** – Runtime
+* **Nosana** – Deployment
+
+---
+
+## 📂 Project Structure
+
+```
+src/        → Core logic & plugins  
+.eliza/     → Agent configuration  
+scripts/    → Utility scripts  
+```
+
+---
+
+## ⚙️ Getting Started
 
 ```bash
-# Create a new project
-elizaos create --type project my-project
-# Dependencies are automatically installed and built
+git clone https://github.com/vamsi1138/auditmind-ai
+cd auditmind-ai
 
-# Navigate to the project directory
-cd my-project
+# Install dependencies
+npm install
 
-# Start development immediately
+# Start development
 elizaos dev
 ```
 
-## Development
+---
+
+## 🧪 Testing
 
 ```bash
-# Start development with hot-reloading (recommended)
-elizaos dev
-
-# OR start without hot-reloading
-elizaos start
-# Note: When using 'start', you need to rebuild after changes:
-# bun run build
-
-# Test the project
 elizaos test
 ```
 
-## Testing
+---
 
-ElizaOS employs a dual testing strategy:
+## 🚀 Deployment
 
-1. **Component Tests** (`src/__tests__/*.test.ts`)
+This project is designed to be deployed on **Nosana** for decentralized AI execution.
 
-   - Run with Bun's native test runner
-   - Fast, isolated tests using mocks
-   - Perfect for TDD and component logic
+---
 
-2. **E2E Tests** (`src/__tests__/e2e/*.e2e.ts`)
-   - Run with ElizaOS custom test runner
-   - Real runtime with actual database (PGLite)
-   - Test complete user scenarios
+## 📌 Example Use Cases
 
-### Test Structure
+* Analyze Solidity contracts
+* Learn about security vulnerabilities
+* Improve smart contract safety
+* Assist in audit preparation
 
-```
-src/
-  __tests__/              # All tests live inside src
-    *.test.ts            # Component tests (use Bun test runner)
-    e2e/                 # E2E tests (use ElizaOS test runner)
-      project-starter.e2e.ts  # E2E test suite
-      README.md          # E2E testing documentation
-  index.ts               # Export tests here: tests: [ProjectStarterTestSuite]
-```
+---
 
-### Running Tests
+## 🔮 Future Improvements
 
-- `elizaos test` - Run all tests (component + e2e)
-- `elizaos test component` - Run only component tests
-- `elizaos test e2e` - Run only E2E tests
+* Automated vulnerability scanning
+* Integration with Slither / Mythril
+* Real-time contract analysis
+* Web UI dashboard
 
-### Writing Tests
+---
 
-Component tests use bun:test:
+## 👤 Author
 
-```typescript
-// Unit test example (__tests__/config.test.ts)
-describe('Configuration', () => {
-  it('should load configuration correctly', () => {
-    expect(config.debug).toBeDefined();
-  });
-});
+**Maddapalli Vamsi Krishna**
 
-// Integration test example (__tests__/integration.test.ts)
-describe('Integration: Plugin with Character', () => {
-  it('should initialize character with plugins', async () => {
-    // Test interactions between components
-  });
-});
-```
+* GitHub: https://github.com/vamsi1138
+* LinkedIn: https://linkedin.com/in/maddiapallivamsikrishna
 
-E2E tests use ElizaOS test interface:
+---
 
-```typescript
-// E2E test example (e2e/project.test.ts)
-export class ProjectTestSuite implements TestSuite {
-  name = 'project_test_suite';
-  tests = [
-    {
-      name: 'project_initialization',
-      fn: async (runtime) => {
-        // Test project in a real runtime
-      },
-    },
-  ];
-}
+## ⭐ Support
 
-export default new ProjectTestSuite();
-```
+If you like this project, give it a ⭐ on GitHub!
 
-The test utilities in `__tests__/utils/` provide helper functions to simplify writing tests.
-
-## Configuration
-
-Customize your project by modifying:
-
-- `src/index.ts` - Main entry point
-- `src/character.ts` - Character definition
-=======
-# AuditMind AI
-
-## Overview
-AuditMind AI is a smart contract security copilot built with ElizaOS. It helps users understand Solidity contracts, identify possible risks, and get simple recommendations.
-
-## Problem
-Smart contract code is difficult for many users to understand and assess quickly.
-
-## Solution
-Users can paste Solidity code and receive a structured security-focused explanation.
-
-## MVP Features
-- Contract summary
-- Risk detection
-- Severity labels
-- Suggested fixes
-- Final verdict
-
-## Planned Stack
-- ElizaOS
-- Node.js
-- React/Next.js
-- Docker
-- Nosana deployment
->>>>>>> 92a5ab12f7c177d2dcf98fa7d6c70d5d7bb764ef
+---
