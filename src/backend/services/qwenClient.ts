@@ -55,7 +55,7 @@ export async function callQwenEndpoint(prompt: string): Promise<string> {
       },
     ],
     temperature: 0.2,
-    max_tokens: 2000,
+    max_tokens: 4096,
   };
 
   const response = await fetch(apiUrl, {

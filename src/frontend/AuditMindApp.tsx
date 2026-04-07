@@ -698,10 +698,10 @@ ${report.beginnerExplanation}`;
                       ? agentSections.map((s, i) => (
                           <div key={i}>
                             {s.title && <div className="agent-section-title">{s.title}</div>}
-                            <p className="risk-body-text">{s.body}</p>
+                            <p className="risk-body-text" style={{ whiteSpace: "pre-wrap" }}>{s.body}</p>
                           </div>
                         ))
-                      : <p className="risk-body-text">{report.agentReasoning || "No additional reasoning provided."}</p>
+                      : <p className="risk-body-text" style={{ whiteSpace: "pre-wrap" }}>{report.agentReasoning || "No additional reasoning provided."}</p>
                     }
                   </div>
                 </div>

@@ -12,6 +12,8 @@ interface ElizaChatRequest {
   max_tokens?: number;
 }
 
+const ELIZA_MAX_CONTENT_LENGTH = 3900;
+
 function extractTextFromResponse(data: any): string {
   if (typeof data?.agentResponse?.text === "string" && data.agentResponse.text.length > 0) {
     return data.agentResponse.text;
@@ -58,6 +60,96 @@ function getElizaBaseUrl(apiUrl: string): string {
   return parsed.toString().replace(/\/$/, "");
 }
 
+function normalizePromptWhitespace(value: string): string {
+  return value
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function extractPromptBlock(prompt: string, startLabel: string, endLabel?: string): string {
+  const startIndex = prompt.indexOf(startLabel);
+  if (startIndex === -1) {
+    return "";
+  }
+
+  const contentStart = startIndex + startLabel.length;
+  const endIndex = endLabel ? prompt.indexOf(endLabel, contentStart) : -1;
+
+  return normalizePromptWhitespace(
+    endIndex >= 0 ? prompt.slice(contentStart, endIndex) : prompt.slice(contentStart)
+  );
+}
+
+function buildCompactElizaPrompt(prompt: string): string {
+  const flags =
+    extractPromptBlock(prompt, "Detected rule flags:\n", "\n\nReturn JSON in exactly this shape:") ||
+    "- none";
+  const contract = extractPromptBlock(prompt, "Solidity contract to analyze:\n") || prompt.trim();
+
+  const candidates = [
+    `
+Audit the Solidity contract and return strict JSON only.
+
+Requirements:
+- Use only evidence from the code.
+- Do not invent risks, roles, or execution paths.
+- Use rule flags as hints only.
+- Populate every field with substantive content.
+
+JSON keys:
+- contractSummary
+- possibleRisks: [{ id, title, severity, category, description, whyItMatters, suggestion, tags }]
+- beginnerExplanation
+- agentReasoning
+- attackSurface
+- evidenceSignals
+- priorityReviewAreas
+- confidenceNotes
+
+Severity values: High, Medium, Low, Info.
+
+Rule flags:
+${flags}
+
+Contract:
+${contract}
+    `,
+    `
+Return strict JSON only with keys contractSummary, possibleRisks, beginnerExplanation, agentReasoning, attackSurface, evidenceSignals, priorityReviewAreas, confidenceNotes.
+possibleRisks items must include id, title, severity, category, description, whyItMatters, suggestion, tags.
+Use only code evidence and keep each field substantive.
+Rule flags:
+${flags}
+Contract:
+${contract}
+    `,
+  ]
+    .map(normalizePromptWhitespace)
+    .filter((candidate) => candidate.length <= ELIZA_MAX_CONTENT_LENGTH);
+
+  if (candidates.length > 0) {
+    return candidates[0];
+  }
+
+  const minimalPrefix = normalizePromptWhitespace(`
+Return strict JSON only with keys contractSummary, possibleRisks, beginnerExplanation, agentReasoning, attackSurface, evidenceSignals, priorityReviewAreas, confidenceNotes.
+Use only code evidence. possibleRisks items use id, title, severity, category, description, whyItMatters, suggestion, tags.
+Rule flags:
+${flags}
+Contract:
+  `);
+
+  const remaining = ELIZA_MAX_CONTENT_LENGTH - minimalPrefix.length - 1;
+  const truncatedContract =
+    remaining > 40 && contract.length > remaining
+      ? `${contract.slice(0, remaining - 33)}\n/* contract truncated for transport */`
+      : contract;
+
+  return `${minimalPrefix}\n${truncatedContract}`.trim();
+}
+
 async function callElizaChatEndpoint(
   apiUrl: string,
   apiKey: string | undefined,
@@ -77,7 +169,7 @@ async function callElizaChatEndpoint(
       },
     ],
     temperature: 0.2,
-    max_tokens: 2000,
+    max_tokens: 4096,
   };
 
   const response = await fetch(apiUrl, {
@@ -137,6 +229,7 @@ async function callElizaSessionEndpoint(
 ): Promise<string> {
   const agentId = await resolveElizaAgentId(baseUrl, apiKey);
   const userId = randomUUID();
+  const compactPrompt = buildCompactElizaPrompt(prompt);
 
   const sessionResponse = await fetch(`${baseUrl}/api/messaging/sessions`, {
     method: "POST",
@@ -167,7 +260,7 @@ async function callElizaSessionEndpoint(
     method: "POST",
     headers: getJsonHeaders(apiKey),
     body: JSON.stringify({
-      content: prompt,
+      content: compactPrompt,
       transport: "http",
       metadata: {
         source: "auditmind-ai",

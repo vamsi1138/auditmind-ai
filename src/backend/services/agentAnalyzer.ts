@@ -114,6 +114,19 @@ function parseDraftFromRawText(rawText: string): AgentDraftReport {
   );
 }
 
+function normalizeStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const items = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return items.length > 0 ? items : undefined;
+}
+
 function normalizeDraft(input: any): AgentDraftReport {
   return {
     contractSummary:
@@ -129,6 +142,11 @@ function normalizeDraft(input: any): AgentDraftReport {
         : undefined,
     agentReasoning:
       typeof input?.agentReasoning === "string" ? input.agentReasoning.trim() : undefined,
+    attackSurface: typeof input?.attackSurface === "string" ? input.attackSurface.trim() : undefined,
+    evidenceSignals: normalizeStringArray(input?.evidenceSignals),
+    priorityReviewAreas: normalizeStringArray(input?.priorityReviewAreas),
+    confidenceNotes:
+      typeof input?.confidenceNotes === "string" ? input.confidenceNotes.trim() : undefined,
   };
 }
 

@@ -16,6 +16,10 @@ export interface AgentDraftReport {
   possibleRisks?: RiskItem[];
   beginnerExplanation?: string;
   agentReasoning?: string;
+  attackSurface?: string;
+  evidenceSignals?: string[];
+  priorityReviewAreas?: string[];
+  confidenceNotes?: string;
 }
 
 export interface AuditReport {
