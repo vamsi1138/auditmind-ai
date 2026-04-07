@@ -131,6 +131,11 @@ interface HistoryItem {
   code: string;
 }
 
+interface AgentSection {
+  title: string | null;
+  body: string;
+}
+
 function loadHistory(): HistoryItem[] {
   try { return JSON.parse(localStorage.getItem("auditmind_history") || "[]"); }
   catch { return []; }
@@ -142,6 +147,62 @@ function saveHistory(items: HistoryItem[]) {
 }
 
 // ─── SMALL HELPERS ───────────────────────────────────────────────────────────
+
+function normalizeComparisonText(value: string): string {
+  return value.toLowerCase().replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+}
+
+function splitAgentReasoning(reasoning?: string): AgentSection[] {
+  if (!reasoning) return [];
+
+  return reasoning
+    .split("\n\n")
+    .map(block => {
+      if (block.startsWith("**") && block.includes(":")) {
+        const colonIdx = block.indexOf(":");
+        return {
+          title: block.slice(2, colonIdx).replace(/\*\*/g, "").trim(),
+          body: block.slice(colonIdx + 1).trim(),
+        };
+      }
+
+      return { title: null, body: block.trim() };
+    })
+    .filter(section => section.body);
+}
+
+function buildCombinedReviewSections(report: AuditApiReport | null): AgentSection[] {
+  if (!report) return [];
+
+  const summary = report.contractSummary.trim();
+  const reasoningSections = splitAgentReasoning(report.agentReasoning);
+  const normalizedSummary = normalizeComparisonText(summary);
+  const summaryAlreadyCovered =
+    normalizedSummary.length > 0 &&
+    reasoningSections.some(section =>
+      normalizeComparisonText(section.body).includes(normalizedSummary)
+    );
+
+  const sections: AgentSection[] = [];
+
+  if (summary && !summaryAlreadyCovered) {
+    sections.push({ title: "Contract Summary", body: summary });
+  }
+
+  if (reasoningSections.length > 0) {
+    sections.push(...reasoningSections);
+  } else if (summary) {
+    sections.push({ title: "Overview", body: summary });
+  }
+
+  return sections;
+}
+
+function buildCombinedReviewText(sections: AgentSection[]): string {
+  return sections
+    .map(section => section.title ? `${section.title}\n${section.body}` : section.body)
+    .join("\n\n");
+}
 
 function CopyBtn({ text, label = "Copy" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
@@ -306,15 +367,54 @@ export default function AuditMindApp() {
         .slice(0, 5)
     : [];
 
+  const combinedReviewSections = buildCombinedReviewSections(report);
+  const combinedReviewText =
+    buildCombinedReviewText(combinedReviewSections) || report?.contractSummary || "";
+
   const copyHumanReport = () => {
     if (!report) return;
+    const humanReportText = `AuditMind AI â€” Security Report
+${"=".repeat(36)}
+Verdict: ${report.verdict}
+Risk Score: ${report.riskScore}/100
+
+Combined Review:
+${combinedReviewText}
+
+Risks (${report.possibleRisks.length}):
+${report.possibleRisks.map(r => `â€¢ [${r.severity}] ${r.title}\n  ${r.description}`).join("\n\n")}
+
+Top Recommendations:
+${recommendations.map((r, i) => `${i + 1}. ${r}`).join("\n")}
+
+Beginner Explanation:
+${report.beginnerExplanation}`;
+    navigator.clipboard.writeText(humanReportText);
+    return;
+    /* const summaryText = [
+      "AuditMind AI â€” Summary",
+      `Verdict: ${report.verdict}`,
+      `Risk Score: ${report.riskScore}/100`,
+      "",
+      "Combined Review:",
+      combinedReviewText,
+      "",
+      "Top Recommendations:",
+      recommendations.map((r, i) => `${i + 1}. ${r}`).join("\n"),
+    ].join("\n");
+    const summaryBlob = new Blob([summaryText], { type: "text/plain" });
+    const summaryLink = document.createElement("a");
+    summaryLink.href = URL.createObjectURL(summaryBlob);
+    summaryLink.download = "auditmind-summary.txt";
+    summaryLink.click();
+    return;
     const txt = `AuditMind AI — Security Report
 ${"=".repeat(36)}
 Verdict: ${report.verdict}
 Risk Score: ${report.riskScore}/100
 
-Contract Summary:
-${report.contractSummary}
+Combined Review:
+${combinedReviewText}
 
 Risks (${report.possibleRisks.length}):
 ${report.possibleRisks.map(r => `• [${r.severity}] ${r.title}\n  ${r.description}`).join("\n\n")}
@@ -324,7 +424,7 @@ ${recommendations.map((r, i) => `${i + 1}. ${r}`).join("\n")}
 
 Beginner Explanation:
 ${report.beginnerExplanation}`;
-    navigator.clipboard.writeText(txt);
+    navigator.clipboard.writeText(txt); */
   };
 
   const downloadJSON = () => {
@@ -338,12 +438,29 @@ ${report.beginnerExplanation}`;
 
   const downloadSummary = () => {
     if (!report) return;
+    const summaryExportText = [
+      "AuditMind AI â€” Summary",
+      `Verdict: ${report.verdict}`,
+      `Risk Score: ${report.riskScore}/100`,
+      "",
+      "Combined Review:",
+      combinedReviewText,
+      "",
+      "Top Recommendations:",
+      recommendations.map((r, i) => `${i + 1}. ${r}`).join("\n"),
+    ].join("\n");
+    const summaryExportBlob = new Blob([summaryExportText], { type: "text/plain" });
+    const summaryExportLink = document.createElement("a");
+    summaryExportLink.href = URL.createObjectURL(summaryExportBlob);
+    summaryExportLink.download = "auditmind-summary.txt";
+    summaryExportLink.click();
+    return; /*
     const txt = `AuditMind AI — Summary\nVerdict: ${report.verdict}\nRisk Score: ${report.riskScore}/100\n\n${report.contractSummary}\n\nTop Recommendations:\n${recommendations.map((r, i) => `${i + 1}. ${r}`).join("\n")}`;
     const blob = new Blob([txt], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "auditmind-summary.txt";
-    a.click();
+    a.click(); */
   };
 
   const loadHistoryItem = (item: HistoryItem) => {
@@ -352,20 +469,6 @@ ${report.beginnerExplanation}`;
     setError("");
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
   };
-
-  // Parse agent reasoning into labelled sections
-  const agentSections = report?.agentReasoning
-    ? report.agentReasoning.split("\n\n").map(block => {
-        if (block.startsWith("**") && block.includes(":")) {
-          const colonIdx = block.indexOf(":");
-          return {
-            title: block.slice(2, colonIdx).replace(/\*\*/g, "").trim(),
-            body: block.slice(colonIdx + 1).trim(),
-          };
-        }
-        return { title: null, body: block.trim() };
-      }).filter(s => s.body)
-    : [];
 
   return (
     <div className="page">
@@ -625,11 +728,21 @@ ${report.beginnerExplanation}`;
                   <div className="card-header">
                     <div className="card-title">
                       <div className="card-icon">📄</div>
-                      Contract Summary
+                      Contract Summary & Agent Reasoning
                     </div>
-                    <CopyBtn text={report.contractSummary} />
+                    <CopyBtn text={combinedReviewText} />
                   </div>
-                  <p className="card-body-text">{report.contractSummary}</p>
+                  <div className="agent-block">
+                    {combinedReviewSections.length > 0
+                      ? combinedReviewSections.map((section, index) => (
+                          <div key={index}>
+                            {section.title && <div className="agent-section-title">{section.title}</div>}
+                            <p className="risk-body-text" style={{ whiteSpace: "pre-wrap" }}>{section.body}</p>
+                          </div>
+                        ))
+                      : <p className="risk-body-text" style={{ whiteSpace: "pre-wrap" }}>{report.contractSummary}</p>
+                    }
+                  </div>
                 </div>
 
                 {/* Possible Risks */}
@@ -685,24 +798,18 @@ ${report.beginnerExplanation}`;
                   </div>
                 </div>
 
-                {/* Agent Reasoning */}
+                {/* Combined Review Notice */}
                 <div className={`card ${explainMode === "technical" ? "highlighted" : ""}`}>
                   <div className="card-header">
                     <div className="card-title">
                       <div className="card-icon">🧠</div>
-                      Agent Reasoning
+                      Review Location
                     </div>
                   </div>
                   <div className="agent-block">
-                    {agentSections.length > 0
-                      ? agentSections.map((s, i) => (
-                          <div key={i}>
-                            {s.title && <div className="agent-section-title">{s.title}</div>}
-                            <p className="risk-body-text" style={{ whiteSpace: "pre-wrap" }}>{s.body}</p>
-                          </div>
-                        ))
-                      : <p className="risk-body-text" style={{ whiteSpace: "pre-wrap" }}>{report.agentReasoning || "No additional reasoning provided."}</p>
-                    }
+                    <p className="risk-body-text" style={{ whiteSpace: "pre-wrap" }}>
+                      The contract summary and agent reasoning are now shown together in the combined review card above.
+                    </p>
                   </div>
                 </div>
               </div>
