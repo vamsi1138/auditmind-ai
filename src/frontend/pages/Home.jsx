@@ -57,9 +57,20 @@ export default function Home() {
               <Link className="am-primary-btn am-link-btn" to="/analyze">
                 Open Analyzer
               </Link>
-              <Link className="am-secondary-btn am-link-btn" to={user ? "/settings" : "/auth"}>
-                {user ? "Open Workspace Settings" : "Sign In / Sign Up"}
-              </Link>
+              {user ? (
+                <Link className="am-secondary-btn am-link-btn" to="/settings">
+                  Open Workspace Settings
+                </Link>
+              ) : (
+                <>
+                  <Link className="am-secondary-btn am-link-btn" to="/auth?mode=signin">
+                    Sign In
+                  </Link>
+                  <Link className="am-secondary-btn am-link-btn" to="/auth?mode=signup">
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 

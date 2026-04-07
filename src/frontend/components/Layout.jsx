@@ -29,6 +29,7 @@ export default function Layout() {
   const toastToken = useAppStore((state) => state.toastToken);
   const hideToast = useAppStore((state) => state.hideToast);
   const signOut = useAppStore((state) => state.signOut);
+  const showSavedToast = useAppStore((state) => state.showSavedToast);
 
   useEffect(() => {
     if (!toastVisible) return undefined;
@@ -37,8 +38,6 @@ export default function Layout() {
   }, [hideToast, toastToken, toastVisible]);
 
   const runtimeLabel = useMemo(() => formatRuntimeLabel(lastResult), [lastResult]);
-  const isAuthScreen = location.pathname === "/auth";
-
   return (
     <div className="am-shell">
       <aside className="am-sidebar">
@@ -104,17 +103,40 @@ export default function Layout() {
               <span>*</span>
             </button>
             {user ? (
-              <button type="button" className="am-primary-btn" onClick={() => signOut()}>
-                Sign Out
-              </button>
+              <>
+                <div className="am-user-pill">
+                  <span className="am-user-pill-name">{user.name}</span>
+                  <span className="am-user-pill-meta">{user.provider === "local" ? "Local" : user.provider === "github" ? "GitHub" : "Google"}</span>
+                </div>
+                <button
+                  type="button"
+                  className="am-primary-btn"
+                  onClick={() => {
+                    signOut();
+                    showSavedToast("Signed out");
+                    navigate("/");
+                  }}
+                >
+                  Sign Out
+                </button>
+              </>
             ) : (
-              <button
-                type="button"
-                className="am-primary-btn"
-                onClick={() => navigate(isAuthScreen ? "/" : "/auth")}
-              >
-                Sign In
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="am-secondary-btn"
+                  onClick={() => navigate("/auth?mode=signin")}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  className="am-primary-btn"
+                  onClick={() => navigate("/auth?mode=signup")}
+                >
+                  Sign Up
+                </button>
+              </>
             )}
           </div>
         </header>
