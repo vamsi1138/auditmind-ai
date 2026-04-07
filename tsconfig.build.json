@@ -6,6 +6,7 @@
     "sourceMap": true,
     "inlineSources": true,
     "declaration": true,
+    "noEmit": false,
     "jsx": "react-jsx"
   },
   "include": [

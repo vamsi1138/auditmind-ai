@@ -8,7 +8,8 @@ describe('Environment Setup', () => {
       'package.json',
       'tsconfig.json',
       'tsconfig.build.json',
-      'tsup.config.ts',
+      'vite.config.ts',
+      'build.ts',
       'bunfig.toml',
     ];
 
@@ -69,14 +70,19 @@ describe('Environment Setup', () => {
     expect(tsconfig.compilerOptions).toHaveProperty('esModuleInterop');
   });
 
-  it('should have a valid tsup.config.ts for building', () => {
-    const tsupConfigPath = path.join(process.cwd(), 'tsup.config.ts');
-    expect(fs.existsSync(tsupConfigPath)).toBe(true);
+  it('should have valid frontend and build configuration files', () => {
+    const viteConfigPath = path.join(process.cwd(), 'vite.config.ts');
+    const buildScriptPath = path.join(process.cwd(), 'build.ts');
+    expect(fs.existsSync(viteConfigPath)).toBe(true);
+    expect(fs.existsSync(buildScriptPath)).toBe(true);
 
-    const tsupConfig = fs.readFileSync(tsupConfigPath, 'utf8');
-    expect(tsupConfig).toContain('defineConfig');
-    expect(tsupConfig).toContain('entry:');
-    expect(tsupConfig).toContain('src/index.ts');
+    const viteConfig = fs.readFileSync(viteConfigPath, 'utf8');
+    expect(viteConfig).toContain('defineConfig');
+    expect(viteConfig).toContain("root: 'src/frontend'");
+
+    const buildScript = fs.readFileSync(buildScriptPath, 'utf8');
+    expect(buildScript).toContain('Bun.build');
+    expect(buildScript).toContain('vite');
   });
 
   it('should have a valid README.md file', () => {
@@ -84,6 +90,6 @@ describe('Environment Setup', () => {
     expect(fs.existsSync(readmePath)).toBe(true);
 
     const readme = fs.readFileSync(readmePath, 'utf8');
-    expect(readme).toContain('# Project Starter');
+    expect(readme).toContain('AuditMind AI');
   });
 });

@@ -25,19 +25,20 @@ export interface AuditApiReport {
     ruleEngineUsed: boolean;
     elizaAgentUsed: boolean;
     qwenEndpointUsed: boolean;
+    analysisMode?: "fallback" | "qwen-direct" | "eliza-qwen";
   };
 }
 
 interface AnalyzeApiResponse {
   success: boolean;
-  report: AuditApiReport;
+  report?: AuditApiReport;
   error?: string;
 }
 
-export async function analyzeContractCode(contractCode: string): Promise<AuditApiReport> {
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:3001").replace(/\/$/, "");
 
-  const response = await fetch(`${apiBase}/api/analyze`, {
+export async function analyzeContractCode(contractCode: string): Promise<AuditApiReport> {
+  const response = await fetch(`${API_BASE}/api/analyze`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -48,21 +49,18 @@ export async function analyzeContractCode(contractCode: string): Promise<AuditAp
     }),
   });
 
-  let data: any = null;
+  let data: AnalyzeApiResponse | null = null;
 
   try {
-    data = await response.json();
+    data = (await response.json()) as AnalyzeApiResponse;
   } catch {
     throw new Error("Server did not return valid JSON.");
   }
 
-  if (!response.ok || !data.success) {
-    const message =
-      typeof data?.error === "string"
-        ? data.error
-        : JSON.stringify(data?.error || "Failed to analyze contract.");
-
-    throw new Error(message); 
+  if (!response.ok || !data?.success || !data.report) {
+    throw new Error(
+      typeof data?.error === "string" ? data.error : "Failed to analyze contract."
+    );
   }
 
   return data.report;

@@ -3,8 +3,8 @@
   "description": "Project starter for elizaOS",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/src/index.js",
-  "module": "dist/src/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "keywords": [
     "project",
@@ -19,7 +19,7 @@
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/src/index.js"
+        "default": "./dist/index.js"
       }
     }
   },
@@ -37,6 +37,7 @@
     "@tanstack/react-query": "^5.67.2",
     "clsx": "^2.1.1",
     "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "ollama": "^0.6.3",
     "react": "^19.1.0",
@@ -46,11 +47,15 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@cypress/react": "9.0.1",
+    "@cypress/vite-dev-server": "6.0.3",
+    "@testing-library/cypress": "10.0.3",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^5.1.1",
+    "cypress": "14.4.1",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"

@@ -1,5 +1,9 @@
 import type { RiskItem, RiskLevel } from "../types/report";
 
+function hasText(source: string, value: string): boolean {
+  return source.indexOf(value) !== -1;
+}
+
 function createRisk(
   id: string,
   title: string,
@@ -26,17 +30,22 @@ export function detectRuleFlags(code: string): string[] {
   const lowerCode = code.toLowerCase();
   const flags: string[] = [];
 
-  if (lowerCode.includes("selfdestruct")) flags.push("selfdestruct");
-  if (lowerCode.includes("delegatecall")) flags.push("delegatecall");
-  if (lowerCode.includes("tx.origin")) flags.push("tx.origin");
-  if (lowerCode.includes(".call(") || lowerCode.includes(".call{")) flags.push("low-level-call");
-  if (lowerCode.includes("onlyowner")) flags.push("owner-controls");
-  if (lowerCode.includes("mint(")) flags.push("mint-function");
-  if (lowerCode.includes("burn(")) flags.push("burn-function");
-  if (lowerCode.includes("pause(") || lowerCode.includes("unpause(")) flags.push("pause-controls");
-  if (lowerCode.includes("withdraw(") || lowerCode.includes("drain(")) flags.push("withdraw-like-function");
-  if (lowerCode.includes("reentrancyguard") || lowerCode.includes("nonreentrant")) {
-    flags.push("reentrancy-protection-detected");
+  if (hasText(lowerCode, "selfdestruct")) flags.push("selfdestruct-usage");
+  if (hasText(lowerCode, "delegatecall")) flags.push("delegatecall-usage");
+  if (hasText(lowerCode, "tx.origin")) flags.push("tx-origin-usage");
+  if (hasText(lowerCode, ".call(") || hasText(lowerCode, ".call{")) flags.push("low-level-call");
+  if (hasText(lowerCode, "onlyowner")) flags.push("owner-privileges");
+  if (hasText(lowerCode, "mint(")) flags.push("mint-function");
+  if (hasText(lowerCode, "burn(")) flags.push("burn-function");
+  if (hasText(lowerCode, "pause(") || hasText(lowerCode, "unpause(")) flags.push("pause-controls");
+  if (hasText(lowerCode, "withdraw(") || hasText(lowerCode, "drain(")) flags.push("withdraw-like-function");
+
+  if (
+    (hasText(lowerCode, ".call(") || hasText(lowerCode, ".call{")) &&
+    !hasText(lowerCode, "nonreentrant") &&
+    !hasText(lowerCode, "reentrancyguard")
+  ) {
+    flags.push("possible-reentrancy");
   }
 
   return flags;
@@ -46,17 +55,23 @@ export function detectFeatures(code: string): string[] {
   const lowerCode = code.toLowerCase();
   const features: string[] = [];
 
-  if (lowerCode.includes("erc20")) features.push("ERC20-like logic");
-  if (lowerCode.includes("erc721") || lowerCode.includes("nft")) features.push("NFT-like logic");
-  if (lowerCode.includes("ownable")) features.push("Ownership controls");
-  if (lowerCode.includes("constructor")) features.push("Constructor initialization");
-  if (lowerCode.includes("mapping(address => uint256)")) features.push("Balance mapping");
-  if (lowerCode.includes("mint(")) features.push("Mint capability");
-  if (lowerCode.includes("burn(")) features.push("Burn capability");
-  if (lowerCode.includes("pause(") || lowerCode.includes("unpause(")) features.push("Pause controls");
-  if (lowerCode.includes("selfdestruct")) features.push("Self-destruct mechanism");
-  if (lowerCode.includes("delegatecall")) features.push("Delegatecall usage");
-  if (lowerCode.includes(".call(") || lowerCode.includes(".call{")) features.push("Low-level external calls");
+  if (hasText(lowerCode, "erc20")) features.push("ERC20-like logic");
+  if (hasText(lowerCode, "erc721") || hasText(lowerCode, "nft")) features.push("NFT-like logic");
+  if (hasText(lowerCode, "ownable") || hasText(lowerCode, "owner")) features.push("Ownership controls");
+  if (hasText(lowerCode, "constructor")) features.push("Constructor initialization");
+  if (
+    hasText(lowerCode, "mapping(address => uint256)") ||
+    hasText(lowerCode, "mapping(address=>uint256)")
+  ) {
+    features.push("Balance tracking");
+  }
+  if (hasText(lowerCode, "mint(")) features.push("Mint capability");
+  if (hasText(lowerCode, "burn(")) features.push("Burn capability");
+  if (hasText(lowerCode, "pause(") || hasText(lowerCode, "unpause(")) features.push("Pause controls");
+  if (hasText(lowerCode, "selfdestruct")) features.push("Self-destruct mechanism");
+  if (hasText(lowerCode, "delegatecall")) features.push("Delegatecall usage");
+  if (hasText(lowerCode, ".call(") || hasText(lowerCode, ".call{")) features.push("Low-level external calls");
+  if (hasText(lowerCode, "event ")) features.push("Event emission");
 
   return features;
 }
@@ -65,7 +80,7 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
   const lowerCode = code.toLowerCase();
   const risks: RiskItem[] = [];
 
-  if (lowerCode.includes("selfdestruct")) {
+  if (hasText(lowerCode, "selfdestruct")) {
     risks.push(
       createRisk(
         "selfdestruct-usage",
@@ -80,7 +95,7 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
     );
   }
 
-  if (lowerCode.includes("delegatecall")) {
+  if (hasText(lowerCode, "delegatecall")) {
     risks.push(
       createRisk(
         "delegatecall-usage",
@@ -95,7 +110,7 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
     );
   }
 
-  if (lowerCode.includes("tx.origin")) {
+  if (hasText(lowerCode, "tx.origin")) {
     risks.push(
       createRisk(
         "tx-origin-usage",
@@ -110,7 +125,7 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
     );
   }
 
-  if (lowerCode.includes(".call(") || lowerCode.includes(".call{")) {
+  if (hasText(lowerCode, ".call(") || hasText(lowerCode, ".call{")) {
     risks.push(
       createRisk(
         "low-level-call",
@@ -126,9 +141,9 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
   }
 
   if (
-    (lowerCode.includes(".call(") || lowerCode.includes(".call{")) &&
-    !lowerCode.includes("reentrancyguard") &&
-    !lowerCode.includes("nonreentrant")
+    (hasText(lowerCode, ".call(") || hasText(lowerCode, ".call{")) &&
+    !hasText(lowerCode, "reentrancyguard") &&
+    !hasText(lowerCode, "nonreentrant")
   ) {
     risks.push(
       createRisk(
@@ -144,7 +159,7 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
     );
   }
 
-  if (lowerCode.includes("onlyowner")) {
+  if (hasText(lowerCode, "onlyowner")) {
     risks.push(
       createRisk(
         "owner-privileges",
@@ -152,14 +167,14 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
         "Medium",
         "Centralization",
         "The contract uses owner-restricted functionality.",
-        "This may be valid, but a single privileged account creates centralization and key-risk concerns.",
+        "This may be intended, but it increases centralization and key-compromise risk.",
         "Document owner powers clearly and consider multisig or timelock for sensitive actions.",
         ["onlyOwner", "owner", "admin"]
       )
     );
   }
 
-  if (lowerCode.includes("mint(") && !lowerCode.includes("onlyowner") && !lowerCode.includes("role")) {
+  if (hasText(lowerCode, "mint(") && !hasText(lowerCode, "onlyowner") && !hasText(lowerCode, "role")) {
     risks.push(
       createRisk(
         "unprotected-mint",
@@ -167,14 +182,14 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
         "High",
         "Token Controls",
         "A mint function appears without an obvious owner or role-based access restriction.",
-        "Unauthorized minting can inflate supply and break token economics or trust.",
+        "Unauthorized minting can inflate supply and break token trust or economics.",
         "Protect minting with onlyOwner, roles, or another clear access-control mechanism.",
         ["mint", "token", "access-control"]
       )
     );
   }
 
-  if (lowerCode.includes("burn(") && !lowerCode.includes("onlyowner") && !lowerCode.includes("role")) {
+  if (hasText(lowerCode, "burn(") && !hasText(lowerCode, "onlyowner") && !hasText(lowerCode, "role")) {
     risks.push(
       createRisk(
         "burn-review",
@@ -189,7 +204,7 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
     );
   }
 
-  if (lowerCode.includes("function pause(") || lowerCode.includes("function unpause(")) {
+  if (hasText(lowerCode, "function pause(") || hasText(lowerCode, "function unpause(")) {
     risks.push(
       createRisk(
         "pause-controls",
@@ -197,7 +212,7 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
         "Medium",
         "Administrative Controls",
         "The contract appears to support pausing logic.",
-        "Pause controls can be useful, but they also introduce admin trust assumptions.",
+        "Pause controls can be useful, but they also introduce trust assumptions and admin power.",
         "Make pause authority explicit and consider multisig protection for pause operations.",
         ["pause", "admin", "control"]
       )
@@ -205,27 +220,28 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
   }
 
   if (
-    lowerCode.includes("setowner(") ||
-    lowerCode.includes("transferownership(") ||
-    lowerCode.includes("changeowner(")
+    hasText(lowerCode, "setowner(") ||
+    hasText(lowerCode, "transferownership(") ||
+    hasText(lowerCode, "changeowner(") ||
+    hasText(lowerCode, "setadmin(")
   ) {
     risks.push(
       createRisk(
         "ownership-transfer",
-        "Ownership transfer capability detected",
+        "Ownership or admin transfer capability detected",
         "Low",
         "Administrative Controls",
-        "The contract allows ownership changes.",
-        "Ownership transfer is common, but it affects who ultimately controls privileged actions.",
-        "Ensure ownership transfer is restricted and emits clear events.",
+        "The contract allows ownership or admin changes.",
+        "Changing privileged roles affects who ultimately controls sensitive functions.",
+        "Ensure privileged role changes are restricted and emit clear events.",
         ["ownership", "admin", "upgrade"]
       )
     );
   }
 
   if (
-    lowerCode.includes("public") &&
-    (lowerCode.includes("withdraw(") || lowerCode.includes("drain("))
+    hasText(lowerCode, "public") &&
+    (hasText(lowerCode, "withdraw(") || hasText(lowerCode, "drain("))
   ) {
     risks.push(
       createRisk(
@@ -235,11 +251,44 @@ export function buildRuleBasedRisks(code: string): RiskItem[] {
         "Funds Management",
         "A public withdraw or drain-like function appears in the contract.",
         "If not protected correctly, public fund-moving functions can lead to direct loss of funds.",
-        "Review modifiers and require conditions around all withdrawal logic.",
+        "Review modifiers, require checks, and state update ordering around all withdrawal logic.",
         ["withdraw", "public", "funds"]
       )
     );
   }
 
   return risks;
+}
+
+export function generateRuleSummary(code: string): string {
+  const lowerCode = code.toLowerCase();
+
+  if (hasText(lowerCode, "selfdestruct")) {
+    return "This contract includes a self-destruct mechanism which can permanently remove the contract from the blockchain.";
+  }
+
+  if (hasText(lowerCode, "erc20")) {
+    return "This contract appears to implement or interact with an ERC-20 style token.";
+  }
+
+  if (hasText(lowerCode, "erc721") || hasText(lowerCode, "nft")) {
+    return "This contract appears to implement or interact with an NFT-style token.";
+  }
+
+  if (hasText(lowerCode, "ownable") || hasText(lowerCode, "owner")) {
+    return "This contract appears to include ownership-based administrative controls.";
+  }
+
+  if (hasText(lowerCode, "constructor")) {
+    return "This contract includes deployment-time initialization logic through a constructor.";
+  }
+
+  if (
+    hasText(lowerCode, "mapping(address => uint256)") ||
+    hasText(lowerCode, "mapping(address=>uint256)")
+  ) {
+    return "This contract likely manages balances or account-based asset tracking.";
+  }
+
+  return "This contract appears to define custom Solidity logic and should be reviewed for admin powers, external calls, and fund movement.";
 }

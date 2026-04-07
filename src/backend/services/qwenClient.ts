@@ -10,7 +10,7 @@ interface QwenChatRequest {
   max_tokens?: number;
 }
 
-function extractTextFromQwenResponse(data: any): string {
+function extractTextFromResponse(data: any): string {
   if (typeof data?.output_text === "string" && data.output_text.length > 0) {
     return data.output_text;
   }
@@ -33,7 +33,7 @@ function extractTextFromQwenResponse(data: any): string {
   return "";
 }
 
-export async function callQwenEndpoint(messages: QwenChatMessage[]): Promise<string> {
+export async function callQwenEndpoint(prompt: string): Promise<string> {
   const apiUrl = process.env.QWEN_API_URL?.trim();
   const apiKey = process.env.QWEN_API_KEY?.trim();
   const model = process.env.QWEN_MODEL?.trim() || "qwen3.5-27b-awq-4bit";
@@ -44,7 +44,16 @@ export async function callQwenEndpoint(messages: QwenChatMessage[]): Promise<str
 
   const payload: QwenChatRequest = {
     model,
-    messages,
+    messages: [
+      {
+        role: "system",
+        content: "Return strict JSON only.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
     temperature: 0.2,
     max_tokens: 2000,
   };
@@ -64,7 +73,7 @@ export async function callQwenEndpoint(messages: QwenChatMessage[]): Promise<str
   }
 
   const data = await response.json();
-  const text = extractTextFromQwenResponse(data);
+  const text = extractTextFromResponse(data);
 
   if (!text) {
     throw new Error("Qwen endpoint returned an empty response.");

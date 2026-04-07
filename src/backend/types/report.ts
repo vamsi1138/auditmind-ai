@@ -12,9 +12,9 @@ export interface RiskItem {
 }
 
 export interface AgentDraftReport {
-  contractSummary: string;
-  possibleRisks: RiskItem[];
-  beginnerExplanation: string;
+  contractSummary?: string;
+  possibleRisks?: RiskItem[];
+  beginnerExplanation?: string;
   agentReasoning?: string;
 }
 
@@ -32,5 +32,6 @@ export interface AuditReport {
     ruleEngineUsed: boolean;
     elizaAgentUsed: boolean;
     qwenEndpointUsed: boolean;
+    analysisMode?: "fallback" | "qwen-direct" | "eliza-qwen";
   };
 }

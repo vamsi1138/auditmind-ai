@@ -1,3 +1,7 @@
+function hasText(source: string, value: string): boolean {
+  return source.indexOf(value) !== -1;
+}
+
 export function validateContractInput(contractCode: string): string | null {
   if (!contractCode || contractCode.trim().length === 0) {
     return "Contract code is required.";
@@ -13,7 +17,10 @@ export function validateContractInput(contractCode: string): string | null {
 
   const lowerCode = contractCode.toLowerCase();
 
-  if (!lowerCode.includes("contract") && !lowerCode.includes("pragma solidity")) {
+  if (
+    !hasText(lowerCode, "contract") &&
+    !hasText(lowerCode, "pragma solidity")
+  ) {
     return "Input does not look like Solidity contract code.";
   }
 

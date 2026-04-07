@@ -1,86 +1,193 @@
-import { Ollama } from "ollama";
+import type { AgentDraftReport } from "../types/report";
+import { callElizaAudit } from "./elizaAgent";
+import { callQwenEndpoint } from "./qwenClient";
 
-interface AgentResult {
+export interface AgentAnalysisResult {
   agentUsed: boolean;
-  agentMode: string;
-  text: string;
+  provider: "eliza-qwen" | "qwen-direct" | "fallback";
+  draft: AgentDraftReport | null;
+  message: string;
 }
 
-function timeoutPromise(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`OLLAMA_TIMEOUT:${ms}`));
-    }, ms);
-  });
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-export async function runAgentAnalysis(prompt: string): Promise<AgentResult> {
-  const model = process.env.OLLAMA_MODEL || "qwen2.5-coder:7b";
-  const host = process.env.OLLAMA_HOST || "http://127.0.0.1:11434";
-  const timeoutMs = Number(process.env.OLLAMA_TIMEOUT_MS || 20000);
+function extractJsonBlock(rawText: string): string {
+  const fencedMatch = rawText.match(/```json\s*([\s\S]*?)```/i);
+  if (fencedMatch?.[1]) return fencedMatch[1].trim();
 
-  const client = new Ollama({ host });
+  const start = rawText.indexOf("{");
+  const end = rawText.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    return rawText.slice(start, end + 1).trim();
+  }
 
-  try {
-    console.log(`[Ollama] Starting analysis with model: ${model}`);
-    console.log(`[Ollama] Host: ${host}`);
+  return rawText.trim();
+}
 
-    const response = await Promise.race([
-      client.chat({
-        model,
-        stream: false,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a smart contract security auditor. Analyze Solidity contracts carefully and return a short practical review in plain text.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        options: {
-          temperature: 0.2,
-        },
-      }),
-      timeoutPromise(timeoutMs),
-    ]);
+function repairJsonText(input: string): string {
+  let output = "";
+  let inString = false;
+  let escaping = false;
 
-    const text = response?.message?.content?.trim();
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
 
-    console.log("[Ollama] Analysis completed successfully");
-
-    return {
-      agentUsed: true,
-      agentMode: "ollama-local",
-      text: text || "No response returned by local Ollama model.",
-    };
-  } catch (error) {
-    console.error("[Ollama] Analysis failed:", error);
-
-    let fallbackReason = "Local Ollama failed. Falling back to rule-based analysis.";
-
-    if (error instanceof Error) {
-      if (error.message.startsWith("OLLAMA_TIMEOUT:")) {
-        fallbackReason =
-          "Local Ollama timed out. Falling back to rule-based analysis.";
-      } else if (
-        error.message.toLowerCase().includes("fetch failed") ||
-        error.message.toLowerCase().includes("econnrefused")
-      ) {
-        fallbackReason =
-          "Could not connect to Ollama. Make sure Ollama is running on localhost:11434.";
-      } else if (error.message.toLowerCase().includes("model")) {
-        fallbackReason =
-          "Ollama model not found. Pull the configured model first and try again.";
+    if (!inString) {
+      if (char === '"') {
+        inString = true;
       }
+      output += char;
+      continue;
     }
 
-    return {
-      agentUsed: false,
-      agentMode: "fallback",
-      text: fallbackReason,
-    };
+    if (escaping) {
+      output += char;
+      escaping = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      output += char;
+      escaping = true;
+      continue;
+    }
+
+    if (char === "\r") {
+      continue;
+    }
+
+    if (char === "\n") {
+      output += "\\n";
+      continue;
+    }
+
+    if (char === '"') {
+      let nextNonWhitespace = "";
+      for (let j = i + 1; j < input.length; j++) {
+        const candidate = input[j];
+        if (!/\s/.test(candidate)) {
+          nextNonWhitespace = candidate;
+          break;
+        }
+      }
+
+      const isStringTerminator =
+        nextNonWhitespace === "" || nextNonWhitespace === ":" || nextNonWhitespace === "," ||
+        nextNonWhitespace === "}" || nextNonWhitespace === "]";
+
+      if (isStringTerminator) {
+        inString = false;
+        output += char;
+      } else {
+        output += '\\"';
+      }
+
+      continue;
+    }
+
+    output += char;
   }
+
+  return output.replace(/,\s*([}\]])/g, "$1").trim();
+}
+
+function parseDraftFromRawText(rawText: string): AgentDraftReport {
+  const jsonText = extractJsonBlock(rawText);
+  const candidates = [jsonText, repairJsonText(jsonText)];
+  let lastError: unknown = null;
+
+  for (const candidate of candidates) {
+    try {
+      return normalizeDraft(JSON.parse(candidate));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const preview = rawText.replace(/\s+/g, " ").slice(0, 180);
+  throw new Error(
+    `Agent response was not valid JSON. Preview: ${preview}${preview.length === 180 ? "..." : ""}. ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`
+  );
+}
+
+function normalizeDraft(input: any): AgentDraftReport {
+  return {
+    contractSummary:
+      typeof input?.contractSummary === "string" ? input.contractSummary.trim() : undefined,
+    possibleRisks: Array.isArray(input?.possibleRisks)
+      ? input.possibleRisks
+      : typeof input?.possibleRisks === "string" && input.possibleRisks.trim() === ""
+      ? []
+      : undefined,
+    beginnerExplanation:
+      typeof input?.beginnerExplanation === "string"
+        ? input.beginnerExplanation.trim()
+        : undefined,
+    agentReasoning:
+      typeof input?.agentReasoning === "string" ? input.agentReasoning.trim() : undefined,
+  };
+}
+
+async function tryEliza(prompt: string): Promise<AgentAnalysisResult> {
+  const rawText = await callElizaAudit(prompt);
+  const draft = parseDraftFromRawText(rawText);
+
+  return {
+    agentUsed: true,
+    provider: "eliza-qwen",
+    draft,
+    message: draft.agentReasoning || "ElizaOS + Qwen returned structured analysis.",
+  };
+}
+
+async function tryQwen(prompt: string): Promise<AgentAnalysisResult> {
+  const rawText = await callQwenEndpoint(prompt);
+  const draft = parseDraftFromRawText(rawText);
+
+  return {
+    agentUsed: true,
+    provider: "qwen-direct",
+    draft,
+    message: draft.agentReasoning || "Qwen returned structured analysis.",
+  };
+}
+
+export async function runAgentAnalysis(prompt: string): Promise<AgentAnalysisResult> {
+  const hasEliza = Boolean(process.env.ELIZA_AUDIT_API_URL?.trim());
+  const hasQwen = Boolean(process.env.QWEN_API_URL?.trim());
+  const failures: string[] = [];
+
+  if (hasEliza) {
+    try {
+      return await tryEliza(prompt);
+    } catch (error) {
+      console.error("[AgentAnalysis] Eliza path failed:", error);
+      failures.push(`Eliza: ${formatError(error)}`);
+    }
+  }
+
+  if (hasQwen) {
+    try {
+      return await tryQwen(prompt);
+    } catch (error) {
+      console.error("[AgentAnalysis] Qwen path failed:", error);
+      failures.push(`Qwen: ${formatError(error)}`);
+    }
+  }
+
+  const fallbackMessage =
+    failures.length > 0
+      ? `Configured agent endpoints failed. ${failures.join(" | ")} Falling back to rule-based analysis.`
+      : "No Eliza/Qwen endpoint configured. Falling back to rule-based analysis.";
+
+  return {
+    agentUsed: false,
+    provider: "fallback",
+    draft: null,
+    message: fallbackMessage,
+  };
 }
