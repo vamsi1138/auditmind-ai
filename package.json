@@ -64,6 +64,8 @@
     "vite": "^7.2.6"
   },
   "scripts": {
+    "postinstall": "node scripts/patch-eliza-cli.js",
+    "repair:eliza-cli": "node scripts/patch-eliza-cli.js",
     "start": "elizaos start",
     "dev": "elizaos dev",
     "backend": "npx tsx src/server.ts",

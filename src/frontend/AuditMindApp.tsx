@@ -828,7 +828,7 @@ ${report.beginnerExplanation}`;
                   <span className="beginner-label">Explain Like I'm New to Smart Contracts</span>
                   <p className="card-body-text">{report.beginnerExplanation}</p>
                 </div>
-
+                  
                 {/* Detected Features */}
                 <div className="card">
                   <div className="card-header">
