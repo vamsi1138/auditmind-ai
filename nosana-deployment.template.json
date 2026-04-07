@@ -1,0 +1,51 @@
+{
+  "name": "AuditMind AI",
+  "market": "REPLACE_WITH_NOSANA_MARKET_ADDRESS",
+  "replicas": 1,
+  "timeout": 60,
+  "strategy": "SIMPLE",
+  "job_definition": {
+    "type": "container",
+    "version": "0.1",
+    "ops": [
+      {
+        "id": "auditmind-app",
+        "type": "container/run",
+        "args": {
+          "image": "docker.io/YOUR_DOCKERHUB_OR_GHCR_USERNAME/auditmind:latest",
+          "cmd": [
+            "/app/scripts/start-auditmind.sh"
+          ],
+          "expose": [
+            {
+              "port": 3001,
+              "health_checks": [
+                {
+                  "type": "http",
+                  "path": "/health",
+                  "method": "GET",
+                  "expected_status": 200,
+                  "continuous": true
+                }
+              ]
+            }
+          ],
+          "env": {
+            "PORT": "3001",
+            "FRONTEND_ORIGIN": "http://localhost:3001",
+            "VITE_API_BASE": "",
+            "ELIZAOS_API_KEY": "REPLACE_WITH_YOUR_ELIZAOS_API_KEY",
+            "ELIZA_AUDIT_API_URL": "http://localhost:3000",
+            "ELIZA_AUDIT_MODEL": "qwen2.5-coder:7b",
+            "PGLITE_DATA_DIR": "/app/.eliza/.elizadb-runtime",
+            "QWEN_API_URL": "",
+            "QWEN_MODEL": "qwen2.5-coder:7b"
+          }
+        }
+      }
+    ],
+    "meta": {
+      "trigger": "dashboard"
+    }
+  }
+}

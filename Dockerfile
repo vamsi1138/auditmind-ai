@@ -41,6 +41,9 @@ COPY . .
 # Build the application
 RUN bun run build
 
+# Make the runtime launcher executable
+RUN chmod +x /app/scripts/start-auditmind.sh
+
 # Change ownership of the app directory to node user
 RUN chown -R node:node /app
 
@@ -53,9 +56,9 @@ USER node
 
 # Environment variables should be provided at runtime (e.g., via docker-compose.yaml)
 
-# Expose port (adjust if needed based on your application)
-EXPOSE 3000
+# Expose Eliza internal port and the AuditMind app port
+EXPOSE 3000 3001
 
 
-# Start the application
-CMD ["elizaos", "start"]
+# Start Eliza and the AuditMind web app together
+CMD ["/app/scripts/start-auditmind.sh"]

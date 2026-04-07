@@ -69,6 +69,7 @@
     "start": "elizaos start",
     "dev": "elizaos dev",
     "backend": "npx tsx src/server.ts",
+    "backend:start": "node dist/server.js",
     "frontend": "vite",
     "build": "bun run build.ts",
     "lint": "prettier --write ./src",

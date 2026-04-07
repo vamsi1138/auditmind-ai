@@ -41,6 +41,9 @@ web_modules/
 
 # Optional npm cache directory
 .npm
+.eliza
+tmp
+output
 
 # Optional eslint cache
 .eslintcache
@@ -170,10 +173,7 @@ test/
 *.spec.js
 *.spec.ts
 
-# Build tools configuration
-vite.config.ts
-tailwind.config.js
-postcss.config.js
+# Nixpacks configuration
 .nixpacks.toml
 nixpacks.toml
 

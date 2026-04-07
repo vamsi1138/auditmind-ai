@@ -1,4 +1,9 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE || "http://localhost:3001").replace(/\/$/, "");
+const configuredApiBase = typeof import.meta !== "undefined" ? import.meta.env.VITE_API_BASE || "" : "";
+const API_BASE_URL = configuredApiBase.trim().replace(/\/$/, "");
+
+function withApiBase(path) {
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
 
 function toOverallSeverity(verdict) {
   if (verdict === "High Risk") return "High";
@@ -164,7 +169,7 @@ function transformBackendReport(report, context = {}) {
 
 async function postAnalyzePayload(payload, context = {}, options = {}) {
   const { signal } = options;
-  const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+  const response = await fetch(withApiBase("/api/analyze"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -260,7 +265,7 @@ export async function analyzeUploadedFiles(files, options = {}) {
 }
 
 export async function getAgentCapabilities() {
-  const response = await fetch(`${API_BASE_URL}/health`);
+  const response = await fetch(withApiBase("/health"));
   if (!response.ok) {
     throw new Error("Agent capabilities unavailable");
   }
@@ -281,7 +286,7 @@ export async function getAgentCapabilities() {
 }
 
 export async function getToolingStatus() {
-  const response = await fetch(`${API_BASE_URL}/api/tooling-status`);
+  const response = await fetch(withApiBase("/api/tooling-status"));
   if (!response.ok) {
     throw new Error("Tooling status unavailable");
   }
