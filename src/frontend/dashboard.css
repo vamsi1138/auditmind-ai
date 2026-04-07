@@ -611,6 +611,12 @@
   place-items: center;
 }
 
+.am-nav-icon svg,
+.am-icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .am-icon-btn {
   width: 42px;
   height: 42px;

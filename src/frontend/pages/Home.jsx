@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAppStore } from "../store/useStore";
 
 const featureCards = [
   {
@@ -31,8 +30,6 @@ const roadmapFeatures = [
 ];
 
 export default function Home() {
-  const user = useAppStore((state) => state.user);
-
   return (
     <div className="am-stack">
       <motion.section
@@ -57,20 +54,9 @@ export default function Home() {
               <Link className="am-primary-btn am-link-btn" to="/analyze">
                 Open Analyzer
               </Link>
-              {user ? (
-                <Link className="am-secondary-btn am-link-btn" to="/settings">
-                  Open Workspace Settings
-                </Link>
-              ) : (
-                <>
-                  <Link className="am-secondary-btn am-link-btn" to="/auth?mode=signin">
-                    Sign In
-                  </Link>
-                  <Link className="am-secondary-btn am-link-btn" to="/auth?mode=signup">
-                    Sign Up
-                  </Link>
-                </>
-              )}
+              <Link className="am-secondary-btn am-link-btn" to="/settings">
+                Open Workspace Settings
+              </Link>
             </div>
           </div>
 

@@ -1,14 +1,30 @@
 import { useEffect, useMemo } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "../store/useStore";
+
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.2 2.6h3.6l.7 2.4c.4.1.8.3 1.2.5l2.3-1.1 2.5 2.5-1.1 2.3c.2.4.4.8.5 1.2l2.4.7v3.6l-2.4.7c-.1.4-.3.8-.5 1.2l1.1 2.3-2.5 2.5-2.3-1.1c-.4.2-.8.4-1.2.5l-.7 2.4h-3.6l-.7-2.4c-.4-.1-.8-.3-1.2-.5l-2.3 1.1-2.5-2.5 1.1-2.3c-.2-.4-.4-.8-.5-1.2l-2.4-.7v-3.6l2.4-.7c.1-.4.3-.8.5-1.2L4.9 7l2.5-2.5 2.3 1.1c.4-.2.8-.4 1.2-.5z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="1.6" fill="none" />
+    </svg>
+  );
+}
 
 const navItems = [
   { to: "/analyze", label: "Analyzer", icon: "</>" },
   { to: "/history", label: "History", icon: "[]" },
   { to: "/saved-reports", label: "Saved Reports", icon: "{}" },
   { to: "/compare", label: "Compare", icon: "<>" },
-  { to: "/settings", label: "Settings", icon: "()" },
+  { to: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
 
 function formatRuntimeLabel(lastResult) {
@@ -20,7 +36,6 @@ function formatRuntimeLabel(lastResult) {
 }
 
 export default function Layout() {
-  const location = useLocation();
   const navigate = useNavigate();
   const user = useAppStore((state) => state.user);
   const lastResult = useAppStore((state) => state.lastResult);
@@ -28,8 +43,6 @@ export default function Layout() {
   const toastMessage = useAppStore((state) => state.toastMessage);
   const toastToken = useAppStore((state) => state.toastToken);
   const hideToast = useAppStore((state) => state.hideToast);
-  const signOut = useAppStore((state) => state.signOut);
-  const showSavedToast = useAppStore((state) => state.showSavedToast);
 
   useEffect(() => {
     if (!toastVisible) return undefined;
@@ -89,55 +102,15 @@ export default function Layout() {
             <button
               type="button"
               className="am-icon-btn"
-              aria-label="Appearance"
-              onClick={() => navigate("/settings")}
-            >
-              <span>O</span>
-            </button>
-            <button
-              type="button"
-              className="am-icon-btn"
               aria-label="Settings"
               onClick={() => navigate("/settings")}
             >
-              <span>*</span>
+              <SettingsIcon />
             </button>
-            {user ? (
-              <>
-                <div className="am-user-pill">
-                  <span className="am-user-pill-name">{user.name}</span>
-                  <span className="am-user-pill-meta">{user.provider === "local" ? "Local" : user.provider === "github" ? "GitHub" : "Google"}</span>
-                </div>
-                <button
-                  type="button"
-                  className="am-primary-btn"
-                  onClick={() => {
-                    signOut();
-                    showSavedToast("Signed out");
-                    navigate("/");
-                  }}
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="am-secondary-btn"
-                  onClick={() => navigate("/auth?mode=signin")}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  className="am-primary-btn"
-                  onClick={() => navigate("/auth?mode=signup")}
-                >
-                  Sign Up
-                </button>
-              </>
-            )}
+            {user ? <div className="am-user-pill">
+              <span className="am-user-pill-name">{user.name}</span>
+              <span className="am-user-pill-meta">{user.provider === "local" ? "Local" : user.provider === "github" ? "GitHub" : "Google"}</span>
+            </div> : null}
           </div>
         </header>
 
