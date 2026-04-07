@@ -728,7 +728,7 @@ ${report.beginnerExplanation}`;
                   <div className="card-header">
                     <div className="card-title">
                       <div className="card-icon">📄</div>
-                      Contract Summary & Agent Reasoning
+                      Contract Summary 
                     </div>
                     <CopyBtn text={combinedReviewText} />
                   </div>
@@ -799,7 +799,7 @@ ${report.beginnerExplanation}`;
                 </div>
 
                 {/* Combined Review Notice */}
-                <div className={`card ${explainMode === "technical" ? "highlighted" : ""}`}>
+                {/* <div className={`card ${explainMode === "technical" ? "highlighted" : ""}`}>
                   <div className="card-header">
                     <div className="card-title">
                       <div className="card-icon">🧠</div>
@@ -811,7 +811,7 @@ ${report.beginnerExplanation}`;
                       The contract summary and agent reasoning are now shown together in the combined review card above.
                     </p>
                   </div>
-                </div>
+                </div> */}
               </div>
 
               {/* ── RIGHT COLUMN ── */}

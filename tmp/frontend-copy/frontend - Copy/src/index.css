@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", "Satoshi", "Segoe UI", sans-serif;
+  background: #05080f;
+  color: #d8e6ff;
+}
+
+.glass-card {
+  background: rgba(18, 27, 47, 0.55);
+  border: 1px solid rgba(96, 125, 173, 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+}
+
+.neon-ring {
+  box-shadow: 0 0 0 1px rgba(35, 211, 255, 0.2), 0 0 35px rgba(35, 211, 255, 0.12);
+}
+
+.bg-grid {
+  background-image: linear-gradient(rgba(117, 138, 181, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117, 138, 181, 0.09) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(74, 109, 171, 0.8);
+  border-radius: 999px;
+}
