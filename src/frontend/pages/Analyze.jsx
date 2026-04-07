@@ -54,6 +54,208 @@ function openPdf(result, code, recs, evidence) {
   return true;
 }
 
+function normalizeNarrative(value) {
+  return String(value || "").replace(/\r/g, "").replace(/\u00a0/g, " ").trim();
+}
+
+function normalizeHeading(value) {
+  return String(value || "").replace(/^[:\-\s]+|[:\-\s]+$/g, "").trim();
+}
+
+function splitSentences(value) {
+  return normalizeNarrative(value)
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9])/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function structureSectionBody(value, options = {}) {
+  const { forcePoints = false } = options;
+  const normalized = normalizeNarrative(value)
+    .replace(/\s+(?=\d+\.\s)/g, "\n")
+    .replace(/\s+(?=[-*•]\s)/g, "\n");
+
+  const paragraphs = [];
+  const items = [];
+
+  normalized
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      if (/^\d+\.\s+/.test(line) || /^[-*•]\s+/.test(line)) {
+        items.push(line.replace(/^(?:\d+\.\s+|[-*•]\s+)/, "").trim());
+        return;
+      }
+
+      paragraphs.push(line.replace(/\s+/g, " ").trim());
+    });
+
+  if (!forcePoints) {
+    return { paragraphs, items };
+  }
+
+  const sentenceItems = paragraphs.flatMap((paragraph) => splitSentences(paragraph));
+  return {
+    paragraphs: [],
+    items: [...items, ...sentenceItems].filter(Boolean),
+  };
+}
+
+function parseStructuredSections(value, introHeading = "") {
+  const normalized = normalizeNarrative(value);
+  if (!normalized) return [];
+
+  const matches = Array.from(normalized.matchAll(/\*\*([^*]+?)\*\*/g));
+  if (!matches.length) return [];
+
+  const sections = [];
+  const intro = normalized.slice(0, matches[0].index || 0).trim();
+  if (intro && introHeading) {
+    sections.push({ heading: introHeading, body: intro });
+  }
+
+  matches.forEach((match, index) => {
+    const next = matches[index + 1];
+    const start = (match.index || 0) + match[0].length;
+    const end = next ? next.index : normalized.length;
+    const heading = normalizeHeading(match[1]);
+    const body = normalized.slice(start, end).replace(/^:\s*/, "").trim();
+    if (heading && body) {
+      sections.push({ heading, body });
+    }
+  });
+
+  return sections;
+}
+
+function buildDisplaySections(value, options = {}) {
+  const { fallbackHeading = "Overview", forcePoints = false, introHeading = "" } = options;
+  const normalized = normalizeNarrative(value);
+  if (!normalized) return [];
+
+  const parsed = parseStructuredSections(normalized, introHeading);
+  if (parsed.length) {
+    return parsed.map((section) => ({
+      heading: section.heading,
+      ...structureSectionBody(section.body, { forcePoints }),
+    }));
+  }
+
+  return [
+    {
+      heading: fallbackHeading,
+      ...structureSectionBody(normalized, { forcePoints }),
+    },
+  ];
+}
+
+function firstSummaryLine(...values) {
+  for (const value of values) {
+    const normalized = normalizeNarrative(value);
+    if (!normalized) continue;
+    const [sentence] = splitSentences(normalized);
+    if (sentence) return sentence;
+    const [line] = normalized.split(/\n+/).map((item) => item.trim()).filter(Boolean);
+    if (line) return line;
+  }
+
+  return "Run an analysis to generate a structured contract review.";
+}
+
+function titleFromCode(value) {
+  const normalized = normalizeNarrative(value);
+  if (!normalized) return "Untitled analysis";
+
+  const contractMatch = normalized.match(/\b(?:contract|library|interface)\s+([A-Za-z_][A-Za-z0-9_]*)/);
+  if (contractMatch?.[1]) {
+    return contractMatch[1];
+  }
+
+  return normalized.split(/\n+/).map((line) => line.trim()).find(Boolean) || "Untitled analysis";
+}
+
+async function copyText(value) {
+  const text = String(value || "");
+  if (!text) return false;
+
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back to a hidden textarea when clipboard permissions are unavailable.
+  }
+
+  try {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const copied = document.execCommand("copy");
+    document.body.removeChild(area);
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
+function StructuredNarrative({ text, emptyText, fallbackHeading, forcePoints = false, introHeading = "" }) {
+  const sections = buildDisplaySections(text, { fallbackHeading, forcePoints, introHeading });
+
+  if (!sections.length) {
+    return <p className="am-muted">{emptyText}</p>;
+  }
+
+  return (
+    <div className="am-structured-stack">
+      {sections.map((section, index) => (
+        <article key={`${section.heading}-${index}`} className="am-structured-block">
+          <strong className="am-structured-heading">{section.heading}</strong>
+          {section.paragraphs.map((paragraph, paragraphIndex) => (
+            <p key={`${section.heading}-paragraph-${paragraphIndex}`} className="am-structured-text">
+              {paragraph}
+            </p>
+          ))}
+          {section.items.length ? (
+            <ul className="am-structured-list">
+              {section.items.map((item, itemIndex) => (
+                <li key={`${section.heading}-item-${itemIndex}`}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function LeadSummary({ text, emptyText }) {
+  const paragraphs = normalizeNarrative(text)
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!paragraphs.length) {
+    return <p className="am-muted">{emptyText}</p>;
+  }
+
+  return (
+    <div className="am-summary-lead">
+      {paragraphs.map((paragraph, index) => (
+        <p key={`summary-${index}`} className="am-summary-lead-text">
+          {paragraph}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function InputBody({ mode, code, address, githubUrl, uploadedFiles, onCode, onAddress, onGithub, onFiles }) {
   const folderRef = useRef(null);
   useEffect(() => {
@@ -91,7 +293,7 @@ export default function Analyze() {
   const fixes = useMemo(() => buildAutoFixes(raw), [raw]);
   const features = useMemo(() => buildFeaturePills(raw), [raw]);
   const admin = useMemo(() => buildAdminPowers(raw), [raw]);
-  const combined = `${raw.contractSummary || "No contract summary available."}\n\n${raw.agentReasoning || "No agent reasoning available."}`.trim();
+  const summaryPreview = firstSummaryLine(raw.contractSummary, raw.agentReasoning, raw.beginnerExplanation);
   const score = (s.lastResult?.riskScore || 0) * 10;
 
   const analyze = async () => {
@@ -172,7 +374,7 @@ export default function Analyze() {
           <div className="am-kpi">{score}<span style={{ fontSize: "1.1rem", color: "#93a4cc" }}>/100</span></div>
           <div style={{ margin: "14px 0" }}><span className={`am-severity-pill am-severity-${severity}`}>{raw.verdict || "Ready"}</span></div>
           <div className="am-risk-meter"><div className="am-risk-meter-bar" style={{ width: `${score}%` }} /></div>
-          <p className="am-muted" style={{ marginTop: 18 }}>{combined.split("\n")[0]}</p>
+          <p className="am-muted" style={{ marginTop: 18 }}>{summaryPreview}</p>
           <button type="button" className="am-secondary-btn" style={{ marginTop: 16, width: "100%" }} onClick={() => setTab("risks")}>View Details</button>
         </aside>
       </section>
@@ -187,12 +389,35 @@ export default function Analyze() {
         <div className="am-content-grid">
           <div className="am-stack">
             {tab === "summary" ? <>
-              <section className="am-card am-section-card"><h2 className="am-section-title">Contract Summary</h2><p className="am-muted" style={{ whiteSpace: "pre-wrap" }}>{combined}</p></section>
-              <section className="am-card am-section-card"><div className="am-section-header"><h2 className="am-section-title">Explanation Mode</h2><button type="button" className="am-secondary-btn" onClick={() => s.setBeginnerMode(!s.beginnerMode)}>{s.beginnerMode ? "Simple Mode" : "Technical Mode"}</button></div><p className="am-muted">{s.beginnerMode ? raw.beginnerExplanation || "Beginner explanation appears here after analysis." : raw.agentReasoning || "Technical reasoning appears here after analysis."}</p></section>
+              <section className="am-card am-section-card">
+                <h2 className="am-section-title">Contract Summary</h2>
+                <LeadSummary text={raw.contractSummary} emptyText="No contract summary available." />
+                <StructuredNarrative
+                  text={raw.agentReasoning}
+                  emptyText="No structured agent reasoning available."
+                  fallbackHeading="Agent Review"
+                  introHeading="Overview"
+                />
+              </section>
+              <section className="am-card am-section-card">
+                <div className="am-section-header">
+                  <h2 className="am-section-title">Explanation Mode</h2>
+                  <button type="button" className="am-secondary-btn" onClick={() => s.setBeginnerMode(!s.beginnerMode)}>
+                    {s.beginnerMode ? "Switch to Technical Mode" : "Switch to Simple Mode"}
+                  </button>
+                </div>
+                <StructuredNarrative
+                  text={s.beginnerMode ? raw.beginnerExplanation : raw.agentReasoning}
+                  emptyText={s.beginnerMode ? "Beginner explanation appears here after analysis." : "Technical reasoning appears here after analysis."}
+                  fallbackHeading={s.beginnerMode ? "Simple Explanation" : "Technical Review"}
+                  forcePoints
+                  introHeading={s.beginnerMode ? "Simple Explanation" : "Overview"}
+                />
+              </section>
             </> : null}
             {tab === "risks" ? <section className="am-card am-section-card"><div className="am-section-header"><h2 className="am-section-title">Detected Risks</h2><div className="am-chip-row"><span className="am-chip">Threshold {s.settings.confidenceThreshold}%</span><span className="am-chip">{s.settings.hideLowConfidence ? "Evidence filter on" : "Showing all findings"}</span></div></div>{visibleRisks.length ? visibleRisks.map((risk) => { const item = evidence.find((e) => e.riskId === risk.id); const confidence = item?.confidence ?? buildConfidenceScore(risk, 0); return <div key={risk.id} className="am-risk-item"><div className="am-risk-head"><div><strong>{risk.title}</strong><div className="am-muted" style={{ marginTop: 6 }}>{risk.category}</div></div><div className="am-chip-row"><span className="am-chip">Confidence {confidence}%</span><span className={`am-severity-pill am-severity-${String(risk.severity).toLowerCase()}`}>{risk.severity}</span></div></div><p className="am-muted" style={{ marginTop: 12 }}>{risk.description || risk.whyItMatters}</p>{risk.suggestion ? <p className="am-muted" style={{ marginTop: 8 }}>Suggested action: {risk.suggestion}</p> : null}</div>; }) : <p className="am-muted">No findings match the current confidence filter.</p>}</section> : null}
             {tab === "recommendations" ? <section className="am-card am-section-card"><h2 className="am-section-title">Top Recommendations</h2>{recs.length ? recs.map((item, i) => <div key={item} className="am-list-item"><strong style={{ marginRight: 8 }}>{i + 1}.</strong>{item}</div>) : <p className="am-muted">Run an analysis to generate recommendations.</p>}</section> : null}
-            {tab === "reasoning" ? <section className="am-card am-section-card"><h2 className="am-section-title">Agent Reasoning</h2><pre className="am-code-diff">{raw.agentReasoning || "No agent reasoning yet."}</pre></section> : null}
+            {tab === "reasoning" ? <section className="am-card am-section-card"><h2 className="am-section-title">Agent Reasoning</h2><StructuredNarrative text={raw.agentReasoning} emptyText="No agent reasoning yet." fallbackHeading="Agent Reasoning" forcePoints introHeading="Overview" /></section> : null}
             {tab === "source" ? <section className="am-card am-section-card"><h2 className="am-section-title">Source Analysis Status</h2><div className="am-two-col"><div className="am-list-item">{sourceStatus.validationPassed ? "Validation Passed" : "Validation Pending"}</div><div className="am-list-item">{sourceStatus.ruleEngineUsed ? "Rule Engine Used" : "Rule Engine Not Used"}</div><div className="am-list-item">{sourceStatus.elizaAgentUsed ? "Eliza Agent Used" : "Eliza Agent Not Used"}</div><div className="am-list-item">{sourceStatus.qwenEndpointUsed ? "Qwen Endpoint Used" : "Qwen Endpoint Not Used"}</div></div><div className="am-list-item" style={{ marginTop: 12 }}>Analysis mode: {sourceStatus.analysisMode || "Not started"}</div></section> : null}
             {tab === "evidence" ? <section className="am-card am-section-card"><h2 className="am-section-title">Line-level Evidence Mapping</h2>{evidence.length ? evidence.map((item) => <div key={item.riskId} className="am-evidence-item"><div className="am-risk-head"><strong>{item.riskId}</strong><span className="am-chip">Confidence {item.confidence}%</span></div>{item.evidence.length ? item.evidence.map((e) => <div key={`${item.riskId}-${e.line}`} className="am-inline-code">line {e.line}: {e.snippet}</div>) : <p className="am-muted">No exact lines mapped automatically for this finding.</p>}</div>) : <p className="am-muted">Evidence mapping becomes available after a result is generated.</p>}</section> : null}
             {tab === "fixes" ? <section className="am-card am-section-card"><h2 className="am-section-title">Auto-fix Suggestions</h2>{fixes.length ? fixes.map((fix) => <div key={fix.title} className="am-evidence-item"><strong>{fix.title}</strong><p className="am-muted" style={{ margin: "10px 0" }}>{fix.summary}</p><pre className="am-code-diff">{fix.patch}</pre></div>) : <p className="am-muted">Auto-fix suggestions appear when matching risks are detected.</p>}</section> : null}
@@ -202,7 +427,7 @@ export default function Analyze() {
           <div className="am-stack">
             <section className="am-card am-section-card"><h2 className="am-section-title">Detected Features</h2><div className="am-chip-row">{features.length ? features.map((item) => <span key={item} className="am-chip">{item}</span>) : <span className="am-chip">Waiting for analysis</span>}</div></section>
             <section className="am-card am-section-card"><h2 className="am-section-title">Top Recommendations</h2>{recs.slice(0, 4).map((item) => <div key={item} className="am-list-item">{item}</div>)}{!recs.length ? <p className="am-muted">Recommendations show here after analysis.</p> : null}</section>
-            <section className="am-card am-section-card"><h2 className="am-section-title">Team Exports</h2><div className="am-export-actions"><button type="button" className="am-secondary-btn" onClick={() => { copyText(md(s.lastResult, s.code, evidence, fixes)); s.showSavedToast("Markdown report copied"); }}>Copy Report</button><button type="button" className="am-secondary-btn" onClick={() => { dl("auditmind-report.md", md(s.lastResult, s.code, evidence, fixes), "text/markdown;charset=utf-8"); s.showSavedToast("Markdown downloaded"); }}>Download MD</button><button type="button" className="am-secondary-btn" onClick={() => { dl("auditmind-report.json", JSON.stringify(raw, null, 2), "application/json;charset=utf-8"); s.showSavedToast("JSON downloaded"); }}>Download JSON</button><button type="button" className="am-secondary-btn" onClick={() => s.showSavedToast(openPdf(s.lastResult, s.code, recs, evidence) ? "Print dialog opened for PDF export" : "Popup blocked for PDF export")}>Download PDF</button><button type="button" className="am-primary-btn" onClick={() => { if (!s.lastResult) return; s.saveReport({ id: `${Date.now()}-saved`, createdAt: new Date().toISOString(), code: s.code || titleFromCode(s.code), result: s.lastResult, inputMode: s.inputMode, analysisMs: s.lastAnalysisMs }); s.showSavedToast("Report saved"); }}>Save Report</button></div></section>
+            <section className="am-card am-section-card"><h2 className="am-section-title">Team Exports</h2><div className="am-export-actions"><button type="button" className="am-secondary-btn" onClick={() => { copyText(md(s.lastResult, s.code, evidence, fixes)).then((copied) => s.showSavedToast(copied ? "Markdown report copied" : "Unable to copy report")); }}>Copy Report</button><button type="button" className="am-secondary-btn" onClick={() => { dl("auditmind-report.md", md(s.lastResult, s.code, evidence, fixes), "text/markdown;charset=utf-8"); s.showSavedToast("Markdown downloaded"); }}>Download MD</button><button type="button" className="am-secondary-btn" onClick={() => { dl("auditmind-report.json", JSON.stringify(raw, null, 2), "application/json;charset=utf-8"); s.showSavedToast("JSON downloaded"); }}>Download JSON</button><button type="button" className="am-secondary-btn" onClick={() => s.showSavedToast(openPdf(s.lastResult, s.code, recs, evidence) ? "Print dialog opened for PDF export" : "Popup blocked for PDF export")}>Download PDF</button><button type="button" className="am-primary-btn" onClick={() => { if (!s.lastResult) return; s.saveReport({ id: `${Date.now()}-saved`, createdAt: new Date().toISOString(), code: s.code || s.address || s.githubUrl || titleFromCode(raw.contractSummary), result: s.lastResult, inputMode: s.inputMode, analysisMs: s.lastAnalysisMs }); s.showSavedToast("Report saved"); }}>Save Report</button></div></section>
             <section className="am-card am-section-card"><h2 className="am-section-title">Runtime & Tooling</h2><div className="am-list-item">Selected analysis profile: {s.selectedFeature}</div><div className="am-list-item">Slither: {s.toolingStatus?.slither?.installed ? "Installed" : "Not found"}</div><div className="am-list-item">Foundry: {s.toolingStatus?.foundry?.installed ? "Installed" : "Not found"}</div><div className="am-input-actions" style={{ marginTop: 12 }}><button type="button" className={`am-secondary-btn${s.selectedFeature === "ai-analysis" ? " is-active" : ""}`} onClick={() => s.setSelectedFeature("ai-analysis")}>AI Analysis</button><button type="button" className={`am-secondary-btn${s.selectedFeature === "risk-detection" ? " is-active" : ""}`} onClick={() => s.setSelectedFeature("risk-detection")}>Risk Detection</button><button type="button" className={`am-secondary-btn${s.selectedFeature === "structured-reports" ? " is-active" : ""}`} onClick={() => s.setSelectedFeature("structured-reports")}>Structured Reports</button><button type="button" className={`am-secondary-btn${s.selectedFeature === "fast-performance" ? " is-active" : ""}`} onClick={() => s.setSelectedFeature("fast-performance")}>Fast Performance</button></div></section>
           </div>
         </div>
