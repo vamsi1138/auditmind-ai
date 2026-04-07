@@ -293,7 +293,7 @@ export default function Analyze() {
   const fixes = useMemo(() => buildAutoFixes(raw), [raw]);
   const features = useMemo(() => buildFeaturePills(raw), [raw]);
   const admin = useMemo(() => buildAdminPowers(raw), [raw]);
-  const summaryPreview = firstSummaryLine(raw.contractSummary, raw.agentReasoning, raw.beginnerExplanation);
+  const summaryPreview = firstSummaryLine(raw.contractSummary, raw.agentReasoning);
   const score = (s.lastResult?.riskScore || 0) * 10;
 
   const analyze = async () => {
@@ -397,21 +397,6 @@ export default function Analyze() {
                   emptyText="No structured agent reasoning available."
                   fallbackHeading="Agent Review"
                   introHeading="Overview"
-                />
-              </section>
-              <section className="am-card am-section-card">
-                <div className="am-section-header">
-                  <h2 className="am-section-title">Explanation Mode</h2>
-                  <button type="button" className="am-secondary-btn" onClick={() => s.setBeginnerMode(!s.beginnerMode)}>
-                    {s.beginnerMode ? "Switch to Technical Mode" : "Switch to Simple Mode"}
-                  </button>
-                </div>
-                <StructuredNarrative
-                  text={s.beginnerMode ? raw.beginnerExplanation : raw.agentReasoning}
-                  emptyText={s.beginnerMode ? "Beginner explanation appears here after analysis." : "Technical reasoning appears here after analysis."}
-                  fallbackHeading={s.beginnerMode ? "Simple Explanation" : "Technical Review"}
-                  forcePoints
-                  introHeading={s.beginnerMode ? "Simple Explanation" : "Overview"}
                 />
               </section>
             </> : null}
