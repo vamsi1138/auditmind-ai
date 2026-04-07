@@ -1,89 +1,32 @@
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { getAgentCapabilities } from "../services/api";
-
 export default function About() {
-  const [agent, setAgent] = useState(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    getAgentCapabilities()
-      .then((capabilityData) => {
-        if (mounted) {
-          setAgent(capabilityData);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setAgent(null);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   return (
-    <div className="space-y-6">
-      <motion.section
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="glass-card rounded-3xl p-8"
-      >
-        <h1 className="text-3xl font-semibold text-white sm:text-4xl">About Audit AI</h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
-          Audit AI is a smart contract security interface focused on giving fast, structured, and understandable
-          Solidity risk analysis.
+    <div className="am-stack">
+      <section className="am-card am-section-card">
+        <h1 className="am-page-title" style={{ fontSize: "2.2rem" }}>
+          About <span>AuditMind</span>
+        </h1>
+        <p className="am-subtitle">
+          AuditMind is a Solidity security workspace that merges rule-based detection with ElizaOS and Qwen-backed reasoning.
         </p>
-      </motion.section>
+      </section>
 
-      <motion.section
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08, duration: 0.35 }}
-        className="glass-card rounded-2xl p-6"
-      >
-        <h2 className="mb-2 text-xl font-semibold text-white">What it does</h2>
-        <p className="text-sm leading-relaxed text-slate-300">
-          The platform parses contract inputs, evaluates security-sensitive patterns, and returns professional sections
-          including risk summaries, severity, and actionable guidance.
-        </p>
-      </motion.section>
+      <section className="am-two-col">
+        <div className="am-card am-section-card">
+          <h2 className="am-section-title">Architecture</h2>
+          <div className="am-list-item">Frontend workspace handles input modes, comparison, exports, settings, and local auth state.</div>
+          <div className="am-list-item">Backend resolves code from direct paste, multi-file uploads, public GitHub links, and verified contract addresses.</div>
+          <div className="am-list-item">Rule checks detect deterministic Solidity patterns and risk flags before or alongside agent analysis.</div>
+          <div className="am-list-item">ElizaOS and Qwen enrich findings with structured summaries, risks, recommendations, and beginner explanations.</div>
+        </div>
 
-      <motion.section
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.16, duration: 0.35 }}
-        className="glass-card rounded-2xl p-6"
-      >
-        <h2 className="mb-2 text-xl font-semibold text-white">Why it matters</h2>
-        <p className="text-sm leading-relaxed text-slate-300">
-          Smart contract bugs and governance flaws can cause irreversible losses. Audit AI aims to reduce review time,
-          improve report consistency, and make security insights accessible across technical and non-technical teams.
-        </p>
-      </motion.section>
-
-      <motion.section
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.35 }}
-        className="glass-card rounded-2xl p-6"
-      >
-        <h2 className="mb-2 text-xl font-semibold text-white">Live Eliza Agent Runtime</h2>
-        {agent ? (
-          <div className="space-y-2 text-sm text-slate-300">
-            <p>Agent: {agent.name || "Unknown"}</p>
-            <p>Runtime Provider: {agent?.runtime?.provider || "n/a"}</p>
-            <p>Model: {agent?.runtime?.model || "n/a"}</p>
-            <p>Capabilities: {(agent.capabilities || []).join(", ") || "n/a"}</p>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-300">Agent runtime metadata is unavailable right now.</p>
-        )}
-      </motion.section>
+        <div className="am-card am-section-card">
+          <h2 className="am-section-title">Output Model</h2>
+          <div className="am-list-item">Unified summary and reasoning block</div>
+          <div className="am-list-item">Severity-ranked findings with evidence and confidence</div>
+          <div className="am-list-item">Admin-power and contract capability dashboard</div>
+          <div className="am-list-item">Recommendations, auto-fix suggestions, and export-ready report sections</div>
+        </div>
+      </section>
     </div>
   );
 }

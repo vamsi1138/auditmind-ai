@@ -18,8 +18,12 @@ export type AnalyzeInput =
     }
   | {
       inputType: "upload";
-      fileContent: string;
+      fileContent?: string;
       fileName?: string;
+      files?: Array<{
+        fileContent: string;
+        fileName?: string;
+      }>;
     };
 
 export async function resolveContractCode(input: AnalyzeInput): Promise<string> {
@@ -34,7 +38,7 @@ export async function resolveContractCode(input: AnalyzeInput): Promise<string> 
       return resolveFromGithub(input.githubUrl);
 
     case "upload":
-      return resolveFromUpload(input.fileContent);
+      return resolveFromUpload(input.fileContent, input.fileName, input.files);
 
     default:
       throw new Error("Unsupported input type.");

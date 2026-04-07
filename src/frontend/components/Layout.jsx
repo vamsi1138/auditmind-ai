@@ -1,51 +1,140 @@
-import { Outlet } from "react-router-dom";
-import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "./Navbar";
+import { useEffect, useMemo } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "../store/useStore";
 
+const navItems = [
+  { to: "/analyze", label: "Analyzer", icon: "</>" },
+  { to: "/history", label: "History", icon: "[]" },
+  { to: "/saved-reports", label: "Saved Reports", icon: "{}" },
+  { to: "/compare", label: "Compare", icon: "<>" },
+  { to: "/settings", label: "Settings", icon: "()" },
+];
+
+function formatRuntimeLabel(lastResult) {
+  const source = lastResult?.rawBackendReport?.sourceAnalysis;
+  if (!source) return "Ready for local analysis";
+  if (source.elizaAgentUsed && source.qwenEndpointUsed) return "ElizaOS + Qwen Analysis Active";
+  if (source.qwenEndpointUsed) return "Qwen analysis active";
+  return "Rule engine ready";
+}
+
 export default function Layout() {
-  const toastVisible = useAppStore((s) => s.toastVisible);
-  const toastMessage = useAppStore((s) => s.toastMessage);
-  const toastToken = useAppStore((s) => s.toastToken);
-  const hideToast = useAppStore((s) => s.hideToast);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const user = useAppStore((state) => state.user);
+  const lastResult = useAppStore((state) => state.lastResult);
+  const toastVisible = useAppStore((state) => state.toastVisible);
+  const toastMessage = useAppStore((state) => state.toastMessage);
+  const toastToken = useAppStore((state) => state.toastToken);
+  const hideToast = useAppStore((state) => state.hideToast);
+  const signOut = useAppStore((state) => state.signOut);
 
   useEffect(() => {
-    if (!toastVisible) return;
-    const timer = setTimeout(() => hideToast(), 1400);
-    return () => clearTimeout(timer);
-  }, [toastVisible, toastToken, hideToast]);
+    if (!toastVisible) return undefined;
+    const timer = window.setTimeout(() => hideToast(), 1800);
+    return () => window.clearTimeout(timer);
+  }, [hideToast, toastToken, toastVisible]);
+
+  const runtimeLabel = useMemo(() => formatRuntimeLabel(lastResult), [lastResult]);
+  const isAuthScreen = location.pathname === "/auth";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-hero text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-grid opacity-35" />
-      <div className="pointer-events-none absolute -left-24 top-20 h-64 w-64 rounded-full bg-neon-cyan/25 blur-3xl" />
-      <div className="pointer-events-none absolute -right-20 top-36 h-64 w-64 rounded-full bg-neon-pink/20 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-neon-mint/15 blur-3xl" />
+    <div className="am-shell">
+      <aside className="am-sidebar">
+        <NavLink className="am-brand" to="/">
+          <span className="am-brand-badge">A</span>
+          <span>
+            AuditMind <span style={{ color: "#78a5ff" }}>AI</span>
+          </span>
+        </NavLink>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 pb-10 pt-4 sm:px-6 lg:px-8">
-        <Navbar />
-        <main className="flex-1">
-          <Outlet />
-        </main>
-        <footer className="pb-2 text-center text-xs text-slate-400">
-          Smart Contract Audit AI · Secure Solidity Insights
-        </footer>
+        <nav className="am-nav">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => `am-nav-link${isActive ? " active" : ""}`}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span className="am-nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="am-card am-sidebar-card">
+          <div className="am-section-title">AuditMind AI</div>
+          <div className="am-muted" style={{ fontSize: "0.92rem", lineHeight: 1.6 }}>
+            v1.0.0
+            <br />
+            Powered by ElizaOS, Qwen LLM, rule-based analysis, evidence mapping, and local workspace
+            persistence.
+          </div>
+          <div className="am-chip" style={{ marginTop: 14 }}>
+            <span className="am-status-dot" />
+            All systems operational
+          </div>
+        </div>
+      </aside>
+
+      <main className="am-main">
+        <header className="am-topbar">
+          <div className="am-status-pill">
+            <span className="am-status-dot" />
+            <span>{runtimeLabel}</span>
+          </div>
+
+          <div className="am-top-actions">
+            <button
+              type="button"
+              className="am-icon-btn"
+              aria-label="Appearance"
+              onClick={() => navigate("/settings")}
+            >
+              <span>O</span>
+            </button>
+            <button
+              type="button"
+              className="am-icon-btn"
+              aria-label="Settings"
+              onClick={() => navigate("/settings")}
+            >
+              <span>*</span>
+            </button>
+            {user ? (
+              <button type="button" className="am-primary-btn" onClick={() => signOut()}>
+                Sign Out
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="am-primary-btn"
+                onClick={() => navigate(isAuthScreen ? "/" : "/auth")}
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+        </header>
+
+        <Outlet />
 
         <AnimatePresence>
           {toastVisible ? (
             <motion.div
               key={toastToken}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 12 }}
-              className="fixed bottom-5 right-5 z-50 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100 shadow-neon"
+              exit={{ opacity: 0, y: 8 }}
+              className="am-toast"
             >
               {toastMessage || "Saved"}
             </motion.div>
           ) : null}
         </AnimatePresence>
-      </div>
+      </main>
     </div>
   );
 }

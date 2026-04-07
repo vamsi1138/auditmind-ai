@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { spawnSync } from "node:child_process";
 import { analyzeRoute } from "./backend/routes/analyze";
 
 const app = express();
@@ -25,6 +26,31 @@ app.get("/health", (_req, res) => {
     ok: true,
     service: "auditmind-backend",
     port: PORT,
+  });
+});
+
+app.get("/api/tooling-status", (_req, res) => {
+  const check = (command: string, args: string[] = ["--version"]) => {
+    const result = spawnSync(command, args, {
+      encoding: "utf8",
+      shell: process.platform === "win32",
+    });
+
+    return {
+      installed: result.status === 0,
+      output:
+        result.status === 0
+          ? (result.stdout || result.stderr || "").trim()
+          : "Not installed",
+    };
+  };
+
+  res.json({
+    success: true,
+    tools: {
+      slither: check("slither"),
+      foundry: check("forge"),
+    },
   });
 });
 

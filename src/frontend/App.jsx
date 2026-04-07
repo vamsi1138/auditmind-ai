@@ -3,13 +3,12 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 import Analyze from "./pages/Analyze";
 import Home from "./pages/Home";
-import Features from "./pages/Features";
-import FeatureAIAnalysis from "./pages/FeatureAIAnalysis";
-import FeatureRiskDetection from "./pages/FeatureRiskDetection";
-import FeatureStructuredReports from "./pages/FeatureStructuredReports";
-import FeatureFastPerformance from "./pages/FeatureFastPerformance";
 import About from "./pages/About";
 import History from "./pages/History";
+import SavedReports from "./pages/SavedReports";
+import Compare from "./pages/Compare";
+import Settings from "./pages/Settings";
+import Auth from "./pages/Auth";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -26,13 +25,12 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/analyze" element={<Analyze />} />
-            <Route path="/features" element={<Features />} />
-            <Route path="/features/ai-analysis" element={<FeatureAIAnalysis />} />
-            <Route path="/features/risk-detection" element={<FeatureRiskDetection />} />
-            <Route path="/features/structured-reports" element={<FeatureStructuredReports />} />
-            <Route path="/features/fast-performance" element={<FeatureFastPerformance />} />
             <Route path="/history" element={<History />} />
+            <Route path="/saved-reports" element={<SavedReports />} />
+            <Route path="/compare" element={<Compare />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/about" element={<About />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

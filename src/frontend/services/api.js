@@ -228,6 +228,37 @@ export async function analyzeGithubSource(githubUrl, options = {}) {
   );
 }
 
+export async function analyzeContractAddress(contractAddress, options = {}) {
+  return postAnalyzePayload(
+    {
+      inputType: "address",
+      contractAddress,
+    },
+    { kind: "address", sourceValue: contractAddress },
+    options
+  );
+}
+
+export async function analyzeUploadedFiles(files, options = {}) {
+  const normalizedFiles = (files || []).map((file) => ({
+    fileName: file.fileName || file.name || "contract.sol",
+    fileContent: file.fileContent || file.content || "",
+  }));
+
+  return postAnalyzePayload(
+    {
+      inputType: "upload",
+      files: normalizedFiles,
+    },
+    {
+      kind: normalizedFiles.length > 1 ? "multifile" : "upload",
+      contractCode: normalizedFiles.map((file) => file.fileContent).join("\n\n"),
+      sourceValue: normalizedFiles.map((file) => file.fileName).join(", "),
+    },
+    options
+  );
+}
+
 export async function getAgentCapabilities() {
   const response = await fetch(`${API_BASE_URL}/health`);
   if (!response.ok) {
@@ -247,6 +278,20 @@ export async function getAgentCapabilities() {
       "beginner-explanations",
     ],
   };
+}
+
+export async function getToolingStatus() {
+  const response = await fetch(`${API_BASE_URL}/api/tooling-status`);
+  if (!response.ok) {
+    throw new Error("Tooling status unavailable");
+  }
+
+  const data = await response.json();
+  if (!data?.success) {
+    throw new Error("Tooling status unavailable");
+  }
+
+  return data.tools;
 }
 
 async function fetchSourcifySource(address, mode, options = {}) {
