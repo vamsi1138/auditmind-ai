@@ -1,161 +1,181 @@
-# AuditMind AI - Agent Workflow
+# AuditMind AI Agent Workflow
 
-## Project Purpose
-AuditMind AI is a smart contract security copilot that analyzes Solidity code and provides:
-- plain-English contract summary
-- detection of potential risks
-- severity classification
-- explanation of impact
-- suggested fixes
-- final safety verdict
+This document describes the current analysis pipeline implemented in the repository.
 
-The goal is to help developers and beginners quickly understand whether a contract is safe or risky.
+## Goal
 
----
+AuditMind AI helps users review Solidity contracts by combining deterministic rule checks with AI-generated reasoning. The backend is designed to stay useful even when an AI provider is unavailable by falling back to rule-based analysis.
 
-## User Input
-The user submits Solidity smart contract code.
+## Supported Inputs
 
-### Input type (MVP)
-- Raw Solidity code pasted into a text input box
+The backend currently resolves Solidity from four input types:
 
-### Future input types (not included in MVP)
-- Contract address
-- GitHub link
-- File upload
+1. `code`
+2. `upload`
+3. `github`
+4. `address`
 
----
+## Resolution Flow
 
-## Agent Workflow
-1. Receive Solidity code from the user
-2. Analyze the contract structure and purpose
-3. Identify key functions and privileged operations
-4. Detect potentially risky patterns
-5. Classify risks by severity level
-6. Explain why each issue matters
-7. Suggest improvements or safer alternatives
-8. Return a structured security report
+```mermaid
+flowchart TD
+    A["Frontend or API request"] --> B["inputResolver.ts"]
+    B --> C["fromCode.ts"]
+    B --> D["fromUpload.ts"]
+    B --> E["fromGithub.ts"]
+    B --> F["fromAddress.ts"]
+```
 
----
+### Input-specific behavior
 
-## Required Output Format
-The agent must always return responses in this structure:
+- `code`: uses the submitted Solidity directly.
+- `upload`: bundles one or more uploaded files into a single analysis string with file headers.
+- `github`: fetches public Solidity files from GitHub. Repo/tree URLs can resolve multiple files; blob/raw URLs resolve a single file.
+- `address`: fetches verified source metadata and Solidity files from Sourcify. Current implementation targets chain id `1`.
 
-1. Contract Summary  
-2. Possible Risks  
-3. Severity  
-4. Why It Matters  
-5. Suggested Fix  
-6. Final Verdict  
+## Analysis Pipeline
 
----
+```mermaid
+flowchart TD
+    A["Resolved Solidity text"] --> B["validateContractInput"]
+    B --> C["detectRuleFlags"]
+    B --> D["detectFeatures"]
+    B --> E["buildRuleBasedRisks"]
+    C --> F["buildAuditPrompt"]
+    D --> G["runAgentAnalysis"]
+    E --> H["mergeRisks"]
+    F --> G
+    G --> H
+    H --> I["riskScore + verdict"]
+    I --> J["beginnerExplanation"]
+    I --> K["detailed agentReasoning"]
+    J --> L["Final AuditReport"]
+    K --> L
+```
 
-## Initial Security Checks
-The agent should analyze the code for:
+## Core Steps
 
-- owner-only sensitive functions
-- unrestricted external calls
-- possible reentrancy patterns
-- missing or weak access control
-- hardcoded addresses
-- mint / burn / pause privileges
-- selfdestruct usage
-- delegatecall usage
-- excessive admin control
-- fund withdrawal control
+### 1. Validation
 
----
+`validateContractInput` rejects empty or obviously invalid Solidity payloads before expensive analysis runs.
 
-## Severity Rules
+### 2. Deterministic rule pass
 
-- **High**  
-  Can directly lead to fund loss, contract takeover, or major exploitation
+The rule engine extracts:
 
-- **Medium**  
-  Dangerous under certain conditions or poor design choices
+- `ruleFlags`
+- `detectedFeatures`
+- rule-generated `possibleRisks`
+- a fallback contract summary
 
-- **Low**  
-  Minor issue or bad practice with limited impact
+These rule signals are used even when AI is available.
 
-- **Info**  
-  Observation only, not a vulnerability
+### 3. Prompt generation
 
----
+`buildAuditPrompt` creates a strict JSON instruction set for the AI layer. The prompt requests:
 
-## Final Verdict Rules
+- contract summary
+- risk array
+- beginner explanation
+- detailed reasoning
+- attack surface
+- evidence signals
+- priority review areas
+- confidence notes
 
-- **Safe**  
-  No major risks detected, only minor or informational issues
+### 4. Agent orchestration
 
-- **Caution**  
-  Medium risks or centralization concerns exist
+`runAgentAnalysis` tries the following order:
 
-- **High Risk**  
-  One or more high severity issues or critical vulnerabilities found
+1. Eliza-routed analysis
+2. Direct Qwen endpoint
+3. Fallback rule-only mode
 
----
+Possible provider outcomes:
 
-## System Prompt Draft
+- `eliza-qwen`
+- `qwen-direct`
+- `fallback`
 
-You are AuditMind AI, a smart contract security copilot.
+### 5. Risk merge and scoring
 
-Your job is to analyze Solidity smart contract code and produce a structured, beginner-friendly security report.
+AI risks are merged into the rule-based findings by `id`. The backend then computes:
 
-### Objectives:
-- Explain what the contract does in simple language
-- Identify risky or suspicious patterns
-- Highlight privileged or owner-controlled behavior
-- Classify risks by severity: High, Medium, Low, Info
-- Explain why each issue matters
-- Suggest practical fixes
-- Provide a final verdict: Safe, Caution, or High Risk
+- `riskScore`
+- `verdict`
 
-### Rules:
-- Do not assume or hallucinate vulnerabilities
-- Only report risks supported by the code
-- If uncertain, clearly mention uncertainty
-- Keep explanations concise and useful
-- Focus on real smart contract security issues
-- Prefer structured output over long paragraphs
+Verdict rules:
 
-### Output Format:
+- `High Risk` if any risk is `High`
+- `Caution` if score is at least `20`
+- `Safe` otherwise
 
-Contract Summary:
-...
+### 6. Narrative expansion
 
-Possible Risks:
-- Risk 1
-- Risk 2
+If the AI response is too short, the backend expands it using:
 
-Severity:
-- Risk 1: High/Medium/Low/Info
-- Risk 2: High/Medium/Low/Info
+- rule flags
+- detected features
+- merged risks
+- verdict context
 
-Why It Matters:
-- ...
-- ...
+This keeps the UI useful even when the model returns terse output.
 
-Suggested Fix:
-- ...
-- ...
+## Output Shape
 
-Final Verdict:
-Safe / Caution / High Risk
+The backend returns an `AuditReport` with these main fields:
 
----
+- `contractSummary`
+- `possibleRisks`
+- `verdict`
+- `riskScore`
+- `beginnerExplanation`
+- `detectedFeatures`
+- `ruleFlags`
+- `agentReasoning`
+- `sourceAnalysis`
 
-## JSON Response Schema
+`sourceAnalysis` includes:
 
-```json
-{
-  "contractSummary": "string",
-  "possibleRisks": [
-    {
-      "title": "string",
-      "severity": "High | Medium | Low | Info",
-      "whyItMatters": "string",
-      "suggestedFix": "string"
-    }
-  ],
-  "finalVerdict": "Safe | Caution | High Risk"
-}
+- `validationPassed`
+- `ruleEngineUsed`
+- `elizaAgentUsed`
+- `qwenEndpointUsed`
+- `analysisMode`
+
+## Frontend Consumption
+
+The frontend adapter in `src/frontend/services/api.js` transforms backend output into UI-friendly sections. The analyzer page then renders the report across multiple tabs such as:
+
+- Summary
+- Risks
+- Recommendations
+- Agent Reasoning
+- Source
+- Evidence
+- Auto-Fix
+- Admin Powers
+
+## Failure Handling
+
+The backend degrades gracefully:
+
+- invalid input returns `400`
+- resolution or runtime errors return `500`
+- agent endpoint failures fall back to rule-based analysis
+- source status still records which layers were used
+
+## Current Constraints
+
+- GitHub mode currently supports public GitHub sources only.
+- GitHub repo tree mode limits fetched Solidity files to `20`.
+- Contract address mode depends on Sourcify verification.
+- Eliza availability depends on a reachable runtime at `ELIZA_AUDIT_API_URL`.
+- Direct Qwen fallback depends on an OpenAI-compatible endpoint at `QWEN_API_URL`.
+
+## Practical Reading Of Results
+
+- `elizaAgentUsed: true` means Eliza successfully handled the AI path.
+- `qwenEndpointUsed: true` can mean either Eliza used Qwen behind the scenes or the backend used direct Qwen fallback.
+- `analysisMode: fallback` means only deterministic analysis was available.
+- `ruleEngineUsed: true` is expected for every normal analysis run in this project.
