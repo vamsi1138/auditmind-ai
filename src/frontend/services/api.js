@@ -155,12 +155,14 @@ function stringifyStructuredReport(sections) {
 
 function transformBackendReport(report, context = {}) {
   const sections = buildStructuredReportSections(report, context);
+  const resolvedContractCode = context.contractCode || "";
   return {
     report: stringifyStructuredReport(sections),
     riskScore: toRiskScore10(report?.riskScore),
     severity: {
       overall: toOverallSeverity(report?.verdict),
     },
+    contractCode: resolvedContractCode,
     sourceMeta: buildSourceMeta(context.kind, context.sourceValue),
     sourceValidation: buildSourceValidation(context.kind),
     rawBackendReport: report,
@@ -191,7 +193,10 @@ async function postAnalyzePayload(payload, context = {}, options = {}) {
     throw error;
   }
 
-  return transformBackendReport(data.report, context);
+  return transformBackendReport(data.report, {
+    ...context,
+    contractCode: context.contractCode || data.resolvedSource || "",
+  });
 }
 
 export function isValidContractAddress(address) {

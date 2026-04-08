@@ -21,6 +21,7 @@ export async function analyzeRoute(req: Request, res: Response) {
     return res.status(200).json({
       success: true,
       report,
+      resolvedSource: contractCode,
     });
   } catch (error) {
     console.error("Analysis error:", error);

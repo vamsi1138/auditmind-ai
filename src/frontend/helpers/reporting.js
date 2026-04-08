@@ -1,56 +1,200 @@
-const PATTERN_MAP = [
-  { key: "reentrancy", match: /call\s*\{[^}]*value|call\.value|low-level external call|reentrancy/i },
-  { key: "access", match: /owner|admin|access control|onlyowner|role/i },
-  { key: "withdraw", match: /withdraw|drain|transfer|fund/i },
-  { key: "txorigin", match: /tx\.origin/i },
-  { key: "delegatecall", match: /delegatecall/i },
-  { key: "selfdestruct", match: /selfdestruct/i },
-  { key: "mint", match: /mint/i },
-  { key: "pause", match: /pause|unpause/i },
-];
-
 function toLines(contractCode = "") {
   return String(contractCode || "").split(/\r?\n/);
 }
 
-function matchPatternForRisk(risk) {
-  const haystack = `${risk?.title || ""} ${risk?.description || ""} ${risk?.tags?.join(" ") || ""}`;
-  return PATTERN_MAP.find((pattern) => pattern.match.test(haystack)) || null;
+function uniqueBy(items, keyBuilder) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = keyBuilder(item);
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function findRegexEvidence(lines, patterns = [], limit = 4) {
+  const evidence = [];
+
+  patterns.forEach((pattern) => {
+    lines.forEach((line, index) => {
+      if (evidence.length >= limit) {
+        return;
+      }
+
+      if (pattern.test(line)) {
+        evidence.push({
+          line: index + 1,
+          snippet: line.trim() || "(blank line)",
+        });
+      }
+    });
+  });
+
+  return uniqueBy(evidence, (item) => `${item.line}:${item.snippet}`).slice(0, limit);
+}
+
+function findFunctionEvidence(lines, namePattern, extraPatterns = [], limit = 4) {
+  const functionPattern = new RegExp(`\\bfunction\\s+${namePattern}\\s*\\(`, "i");
+  const basePatterns = [functionPattern, ...extraPatterns];
+  return findRegexEvidence(lines, basePatterns, limit);
+}
+
+function riskText(risk) {
+  return `${risk?.id || ""} ${risk?.title || ""} ${risk?.description || ""} ${risk?.tags?.join(" ") || ""}`.toLowerCase();
+}
+
+function findEvidenceForRisk(lines, risk) {
+  const haystack = riskText(risk);
+
+  if (/selfdestruct-usage|selfdestruct/.test(haystack)) {
+    return {
+      specificity: 14,
+      evidence: findRegexEvidence(lines, [/selfdestruct\s*\(/i]),
+    };
+  }
+
+  if (/delegatecall-usage|delegatecall/.test(haystack)) {
+    return {
+      specificity: 14,
+      evidence: findRegexEvidence(lines, [/delegatecall\s*\(/i]),
+    };
+  }
+
+  if (/tx-origin-usage|tx\.origin/.test(haystack)) {
+    return {
+      specificity: 14,
+      evidence: findRegexEvidence(lines, [/tx\.origin/i, /modifier\s+onlyOwner/i]),
+    };
+  }
+
+  if (/possible-reentrancy|reentrancy|external call before state update/.test(haystack)) {
+    return {
+      specificity: 13,
+      evidence: findRegexEvidence(lines, [
+        /\.call\s*(?:\(|\{)/i,
+        /\b(?:balances?|rewards?|credits?|tokenbalances?)\s*\[[^\]]+\]\s*(?:\+=|-=|=)/i,
+        /\b(?:totalSupply|locked|owner|treasury|feePercent|paused)\b\s*(?:\+=|-=|=)/i,
+      ]),
+    };
+  }
+
+  if (/admin-drain-capability|drain or emergency withdrawal|fund drain/.test(haystack)) {
+    return {
+      specificity: 13,
+      evidence: findRegexEvidence(lines, [
+        /\bfunction\s+(?:adminWithdraw|emergencyWithdraw|withdrawAll|drainAll|drain|sweep|rescue)\s*\(/i,
+        /address\s*\(\s*this\s*\)\s*\.balance/i,
+        /\.(?:transfer|send|call)\s*(?:\(|\{)/i,
+      ]),
+    };
+  }
+
+  if (/unprotected-mint|mint or reward issuance|mint function|no-access-control/.test(haystack)) {
+    return {
+      specificity: 13,
+      evidence: findRegexEvidence(lines, [
+        /\bfunction\s+(?:mint|mintBonus|grantReward|setReward|airdrop)\s*\(/i,
+        /\b(?:totalSupply|rewards?|balances?|tokenbalances?)\s*\[[^\]]+\]\s*\+=/i,
+        /\btotalSupply\s*\+=/i,
+      ]),
+    };
+  }
+
+  if (/burn-review|burn function/.test(haystack)) {
+    return {
+      specificity: 11,
+      evidence: findFunctionEvidence(lines, "(?:burn|burnFrom)", [/\bburn\s*\(/i]),
+    };
+  }
+
+  if (/payable-fallback-funds-trap|payable fallback/.test(haystack)) {
+    return {
+      specificity: 12,
+      evidence: findRegexEvidence(lines, [/fallback\s*\([^)]*\)\s*external\s+payable/i, /fallback\s*\(/i]),
+    };
+  }
+
+  if (/pause-controls|pause|unpause/.test(haystack)) {
+    return {
+      specificity: 10,
+      evidence: findFunctionEvidence(lines, "(?:pause|unpause)"),
+    };
+  }
+
+  if (/ownership-transfer|changeowner|transferownership|setowner/.test(haystack)) {
+    return {
+      specificity: 10,
+      evidence: findRegexEvidence(lines, [
+        /\bfunction\s+(?:changeOwner|transferOwnership|setOwner|setAdmin|addAdmin|removeAdmin)\s*\(/i,
+        /OwnershipTransferred/i,
+      ]),
+    };
+  }
+
+  if (/owner-privileges|owner controls|admin risk|centralization/.test(haystack)) {
+    return {
+      specificity: 9,
+      evidence: findRegexEvidence(lines, [
+        /modifier\s+onlyOwner/i,
+        /modifier\s+onlyAdmin/i,
+        /\bonlyOwner\b/i,
+        /\bonlyAdmin\b/i,
+      ]),
+    };
+  }
+
+  if (/public-withdraw-review|withdraw-like|withdraw/.test(haystack)) {
+    return {
+      specificity: 9,
+      evidence: findRegexEvidence(lines, [
+        /\bfunction\s+(?:withdraw|claimReward|claim|redeem|unstake)\s*\(/i,
+        /\.(?:transfer|send|call)\s*(?:\(|\{)/i,
+      ]),
+    };
+  }
+
+  if (/low-level-call|external call/.test(haystack)) {
+    return {
+      specificity: 8,
+      evidence: findRegexEvidence(lines, [/\.call\s*(?:\(|\{)/i]),
+    };
+  }
+
+  return {
+    specificity: 4,
+    evidence: findRegexEvidence(lines, [
+      /modifier\s+onlyOwner/i,
+      /\bonlyOwner\b/i,
+      /\bfunction\s+\w+\s*\(/i,
+    ], 3),
+  };
 }
 
 export function buildEvidenceMap(contractCode, risks = []) {
   const lines = toLines(contractCode);
 
   return risks.map((risk) => {
-    const pattern = matchPatternForRisk(risk);
-    const evidence = [];
-
-    if (pattern) {
-      lines.forEach((line, index) => {
-        if (pattern.match.test(line) && evidence.length < 3) {
-          evidence.push({
-            line: index + 1,
-            snippet: line.trim() || "(blank line)",
-          });
-        }
-      });
-    }
+    const { evidence, specificity } = findEvidenceForRisk(lines, risk);
 
     return {
       riskId: risk.id,
-      confidence: buildConfidenceScore(risk, evidence.length),
+      confidence: buildConfidenceScore(risk, evidence.length, specificity),
       evidence,
     };
   });
 }
 
-export function buildConfidenceScore(risk, evidenceCount = 0) {
+export function buildConfidenceScore(risk, evidenceCount = 0, specificity = 0) {
   let score = 35;
   if (risk?.severity === "High") score += 25;
   if (risk?.severity === "Medium") score += 18;
   if (risk?.severity === "Low") score += 10;
   score += Math.min(25, evidenceCount * 10);
   score += Math.min(10, (risk?.tags || []).length * 2);
+  score += Math.min(14, specificity);
   return Math.max(20, Math.min(98, score));
 }
 
@@ -67,11 +211,12 @@ export function buildAdminPowers(rawReport) {
     ),
     maybeAdd(
       "Pause / emergency controls",
-      features.includes("Pause controls") || risks.some((risk) => /pause/i.test(risk.title))
+      features.includes("Pause controls") ||
+        risks.some((risk) => /pause|emergency withdrawal|drain/i.test(risk.title))
     ),
     maybeAdd(
       "Mint / supply controls",
-      features.includes("Mint capability") || risks.some((risk) => /mint/i.test(risk.title))
+      features.includes("Mint capability") || risks.some((risk) => /mint|reward issuance/i.test(risk.title))
     ),
     maybeAdd(
       "Withdraw / fund movement",
@@ -105,9 +250,9 @@ export function buildAutoFixes(rawReport) {
 
   return risks.slice(0, 4).map((risk) => {
     const title = risk.title || "Suggested fix";
-    const lower = `${risk.title} ${risk.description}`.toLowerCase();
+    const lower = `${risk.id || ""} ${risk.title || ""} ${risk.description || ""}`.toLowerCase();
 
-    if (lower.includes("reentrancy")) {
+    if (lower.includes("reentrancy") || lower.includes("external call before state update")) {
       return {
         title,
         summary: "Move state updates before external calls and add nonReentrant protection.",
@@ -119,14 +264,38 @@ export function buildAutoFixes(rawReport) {
       };
     }
 
-    if (lower.includes("access") || lower.includes("owner") || lower.includes("admin")) {
+    if (lower.includes("unprotected-mint") || lower.includes("mint or reward issuance")) {
       return {
         title,
-        summary: "Restrict privileged functions and make authority explicit.",
+        summary: "Gate issuance paths behind explicit authorization before minting supply or rewards.",
         patch: patchTemplate(
-          "Access control",
-          "function setOwner(address newOwner) external {\n  owner = newOwner;\n}",
-          "modifier onlyOwner() {\n  require(msg.sender == owner, \"Not owner\");\n  _;\n}\n\nfunction setOwner(address newOwner) external onlyOwner {\n  owner = newOwner;\n}"
+          "Issuance access control",
+          "function mint(address to, uint256 amount) external {\n  tokenBalance[to] += amount;\n  totalSupply += amount;\n}",
+          "modifier onlyOwner() {\n  require(msg.sender == owner, \"Not owner\");\n  _;\n}\n\nfunction mint(address to, uint256 amount) external onlyOwner {\n  tokenBalance[to] += amount;\n  totalSupply += amount;\n}"
+        ),
+      };
+    }
+
+    if (lower.includes("admin-drain-capability") || lower.includes("drain or emergency withdrawal")) {
+      return {
+        title,
+        summary: "Limit privileged fund-drain paths and document them as emergency-only operations.",
+        patch: patchTemplate(
+          "Emergency withdrawal hardening",
+          "function adminWithdraw(address payable to, uint256 amount) external onlyAdmin {\n  to.transfer(amount);\n}",
+          "function adminWithdraw(address payable to, uint256 amount) external onlyOwner {\n  require(emergencyMode, \"Emergency only\");\n  require(address(this).balance >= amount, \"Low balance\");\n  to.transfer(amount);\n}"
+        ),
+      };
+    }
+
+    if (lower.includes("payable-fallback-funds-trap") || lower.includes("payable fallback")) {
+      return {
+        title,
+        summary: "Reject unexpected payable fallback calls or route them into the intended deposit accounting flow.",
+        patch: patchTemplate(
+          "Fallback handling",
+          "fallback() external payable {\n}",
+          "fallback() external payable {\n  revert(\"Unsupported calldata\");\n}\n\nreceive() external payable {\n  balances[msg.sender] += msg.value;\n}"
         ),
       };
     }
@@ -139,6 +308,18 @@ export function buildAutoFixes(rawReport) {
           "Authorization fix",
           "require(tx.origin == owner, \"Not owner\");",
           "require(msg.sender == owner, \"Not owner\");"
+        ),
+      };
+    }
+
+    if (lower.includes("access") || lower.includes("owner") || lower.includes("admin")) {
+      return {
+        title,
+        summary: "Restrict privileged functions and make authority explicit.",
+        patch: patchTemplate(
+          "Access control",
+          "function setOwner(address newOwner) external {\n  owner = newOwner;\n}",
+          "modifier onlyOwner() {\n  require(msg.sender == owner, \"Not owner\");\n  _;\n}\n\nfunction setOwner(address newOwner) external onlyOwner {\n  owner = newOwner;\n}"
         ),
       };
     }

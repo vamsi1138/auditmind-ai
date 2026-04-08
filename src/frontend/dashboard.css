@@ -592,6 +592,73 @@
   border-bottom: 0;
 }
 
+.am-docs-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.85fr);
+  gap: 18px;
+}
+
+.am-docs-card {
+  min-height: 100%;
+}
+
+.am-docs-flow-grid,
+.am-docs-file-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.am-docs-flow-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.am-docs-file-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.am-docs-flow-item strong,
+.am-docs-file-group strong,
+.am-docs-mini-title,
+.am-docs-timeline-title {
+  color: #f5f8ff;
+}
+
+.am-docs-subsection + .am-docs-subsection {
+  margin-top: 18px;
+}
+
+.am-docs-mini-title {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.am-docs-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.am-docs-timeline-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(83, 98, 146, 0.22);
+  background: rgba(15, 21, 38, 0.88);
+  padding: 16px 18px;
+}
+
+.am-docs-timeline-title {
+  font-weight: 800;
+}
+
+.am-docs-timeline-body {
+  color: #cdd9f7;
+  line-height: 1.7;
+}
+
 .am-history-title {
   color: #f8fbff;
   font-weight: 700;
@@ -745,7 +812,10 @@
 
 @media (max-width: 1200px) {
   .am-hero-grid,
-  .am-three-col {
+  .am-three-col,
+  .am-docs-hero,
+  .am-docs-flow-grid,
+  .am-docs-file-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -762,5 +832,9 @@
   .am-slider-wrap {
     min-width: 100%;
     justify-content: flex-start;
+  }
+
+  .am-docs-timeline-row {
+    grid-template-columns: 1fr;
   }
 }

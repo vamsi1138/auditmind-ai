@@ -31,6 +31,7 @@ WORKDIR /app
 
 # Copy package files first for better caching
 COPY package.json bun.lock* ./
+COPY scripts/patch-eliza-cli.js ./scripts/patch-eliza-cli.js
 
 # Install dependencies
 RUN bun install

@@ -57,6 +57,9 @@ export default function Home() {
               <Link className="am-secondary-btn am-link-btn" to="/settings">
                 Open Workspace Settings
               </Link>
+              <Link className="am-secondary-btn am-link-btn" to="/docs">
+                Open Project Docs
+              </Link>
             </div>
           </div>
 
@@ -101,8 +104,8 @@ export default function Home() {
               The analyzer screen exposes every workflow we discussed, with local auth and local persistence ready now.
             </p>
           </div>
-          <Link className="am-secondary-btn am-link-btn" to="/about">
-            View architecture
+          <Link className="am-secondary-btn am-link-btn" to="/docs">
+            View project docs
           </Link>
         </div>
         <div className="am-two-col">

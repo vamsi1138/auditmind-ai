@@ -83,6 +83,12 @@ function isDetailedNarrative(value: string | undefined): boolean {
   return trimmed.length >= 260 && countSentences(trimmed) >= 4;
 }
 
+function isDetailedContractSummary(value: string | undefined): boolean {
+  const trimmed = value?.trim();
+  if (!trimmed) return false;
+  return trimmed.length >= 120 && countSentences(trimmed) >= 2;
+}
+
 function joinNaturalLanguage(items: string[]): string {
   if (items.length === 0) return "";
   if (items.length === 1) return items[0];
@@ -363,6 +369,24 @@ function mergeRisks(ruleRisks: RiskItem[], aiRisks?: RiskItem[]): RiskItem[] {
   });
 }
 
+function pruneOverlappingRisks(risks: RiskItem[]): RiskItem[] {
+  const hasConcreteReentrancy = risks.some((risk) =>
+    /possible-reentrancy|reentrancy|external call before state update/i.test(
+      `${risk.id} ${risk.title} ${risk.description}`
+    )
+  );
+
+  return risks.filter((risk) => {
+    const haystack = `${risk.id} ${risk.title} ${risk.description}`.toLowerCase();
+
+    if (hasConcreteReentrancy && /public-withdraw-review|withdraw-like function detected/.test(haystack)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 export async function analyzeContract(contractCode: string): Promise<AuditReport> {
   const ruleFlags = detectRuleFlags(contractCode);
   const detectedFeatures = detectFeatures(contractCode);
@@ -371,12 +395,14 @@ export async function analyzeContract(contractCode: string): Promise<AuditReport
   const prompt = buildAuditPrompt(contractCode, ruleFlags);
   const agentResult = await runAgentAnalysis(prompt);
 
-  const possibleRisks = mergeRisks(ruleRisks, agentResult.draft?.possibleRisks);
+  const possibleRisks = pruneOverlappingRisks(mergeRisks(ruleRisks, agentResult.draft?.possibleRisks));
   const riskScore = calculateRiskScore(possibleRisks);
   const verdict = generateVerdict(riskScore, possibleRisks);
 
-  const contractSummary =
-    agentResult.draft?.contractSummary?.trim() || generateRuleSummary(contractCode);
+  const generatedSummary = generateRuleSummary(contractCode);
+  const contractSummary = isDetailedContractSummary(agentResult.draft?.contractSummary)
+    ? agentResult.draft?.contractSummary?.trim() || generatedSummary
+    : generatedSummary;
 
   const beginnerExplanation =
     agentResult.draft?.beginnerExplanation?.trim() ||

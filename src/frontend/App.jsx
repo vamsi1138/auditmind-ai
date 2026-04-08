@@ -9,6 +9,7 @@ import SavedReports from "./pages/SavedReports";
 import Compare from "./pages/Compare";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
+import Docs from "./pages/Docs";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -30,6 +31,7 @@ function AnimatedRoutes() {
             <Route path="/history" element={<History />} />
             <Route path="/saved-reports" element={<SavedReports />} />
             <Route path="/compare" element={<Compare />} />
+            <Route path="/docs" element={<Docs />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/about" element={<About />} />
             <Route path="*" element={<Navigate to="/" replace />} />

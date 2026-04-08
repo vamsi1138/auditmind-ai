@@ -19,11 +19,41 @@ function SettingsIcon() {
   );
 }
 
+function DocsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M7 3.5h8.5l3 3V20a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M15.5 3.5V7h3"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M9 11h6M9 14.5h6M9 18h4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 const navItems = [
   { to: "/analyze", label: "Analyzer", icon: "</>" },
   { to: "/history", label: "History", icon: "[]" },
   { to: "/saved-reports", label: "Saved Reports", icon: "{}" },
   { to: "/compare", label: "Compare", icon: "<>" },
+  { to: "/docs", label: "Docs", icon: <DocsIcon /> },
   { to: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
 
